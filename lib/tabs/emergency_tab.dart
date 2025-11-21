@@ -1,0 +1,421 @@
+import 'package:flutter/material.dart';
+import 'dart:async';
+
+class EmergencyTab extends StatefulWidget {
+  const EmergencyTab({super.key});
+
+  @override
+  State<EmergencyTab> createState() => _EmergencyTabState();
+}
+
+class _EmergencyTabState extends State<EmergencyTab> {
+  bool _isEmergency = false;
+  bool _isRecording = false;
+  int _elapsedSeconds = 0;
+  Timer? _timer;
+
+  void _handleEmergencyCall() {
+    setState(() {
+      _isEmergency = true;
+      _isRecording = true;
+      _elapsedSeconds = 0;
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _elapsedSeconds++;
+      });
+    });
+
+    // Show emergency dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('119 신고'),
+        content: const Text('119에 연결 중입니다...\n주변 사용자에게 알림을 전송합니다.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _stopRecording() {
+    setState(() {
+      _isRecording = false;
+      _isEmergency = false;
+    });
+    _timer?.cancel();
+  }
+
+  String _formatTime(int seconds) {
+    final mins = seconds ~/ 60;
+    final secs = seconds % 60;
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Header
+            const Text(
+              '응급 구조 도우미',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '골든타임을 지키는 스마트 응급 대응',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Emergency Button Card
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEF5350), Color(0xFFE53935)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Main Emergency Button
+                  InkWell(
+                    onTap: _handleEmergencyCall,
+                    child: Container(
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: _isEmergency ? const Color(0xFF7F0000) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.phone,
+                              size: 48,
+                              color: _isEmergency ? Colors.white : Colors.red,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _isEmergency ? '119 연결 중...' : '119 긴급 신고',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: _isEmergency ? Colors.white : Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Features Grid
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.people, color: Colors.white, size: 16),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '주변 사용자',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    Text(
+                                      '자동 알림',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.notifications, color: Colors.white, size: 16),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '위치 전송',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    Text(
+                                      '실시간 공유',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  Text(
+                    '버튼을 누르면 119 연결 및 주변 사용자에게 자동으로 알림이 전송됩니다',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+
+            // Recording Status Card
+            if (_isRecording) ...[
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.red[50]!, Colors.orange[50]!],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.red[200]!),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  Icons.circle,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                '상황 기록 중',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _stopRecording,
+                          icon: const Icon(Icons.stop_circle, size: 14),
+                          label: const Text('중지', style: TextStyle(fontSize: 11)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            minimumSize: Size.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Time and Status
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, size: 14, color: Colors.grey[700]),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatTime(_elapsedSeconds),
+                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                        ),
+                        const SizedBox(width: 16),
+                        Icon(Icons.mic, size: 14, color: Colors.grey[700]),
+                        const SizedBox(width: 4),
+                        Text(
+                          '음성 기록',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                        ),
+                        const SizedBox(width: 16),
+                        Icon(Icons.description, size: 14, color: Colors.grey[700]),
+                        const SizedBox(width: 4),
+                        Text(
+                          '이벤트 로그',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Event Log
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '기록된 내용:',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildEventItem('119 신고 접수', _elapsedSeconds - 120),
+                          _buildEventItem('주변 사용자 알림 전송', _elapsedSeconds - 115),
+                          _buildEventItem('CPR 가이드 시작', _elapsedSeconds - 90),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Text(
+                      '💾 모든 음성, 시간, 이벤트가 자동 저장되어 구조대원 및 의료진에게 전달됩니다',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventItem(String text, int seconds) {
+    final displayTime = seconds > 0 ? _formatTime(seconds) : '00:00';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '• $text',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[700],
+            ),
+          ),
+          Text(
+            displayTime,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
