@@ -28,9 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _tabs[_currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: Colors.grey[200]!, width: 1),
-          ),
+          border: Border(top: BorderSide(color: Colors.grey[200]!, width: 1)),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
@@ -45,14 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
           selectedFontSize: 12,
           unselectedFontSize: 12,
           items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: '홈',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.menu_book),
-              label: '가이드',
-            ),
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
+            BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: '가이드'),
             BottomNavigationBarItem(
               icon: Icon(Icons.psychology),
               label: 'AI 분석',
