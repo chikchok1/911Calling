@@ -238,7 +238,7 @@ class _GuideTabState extends State<GuideTab> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: e.bgColor.withOpacity(0.15),
+            color: e.bgColor.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -282,13 +282,13 @@ class _GuideTabState extends State<GuideTab> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4)
+            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4)
           ]),
       child: Row(
         children: [
           CircleAvatar(
             radius: 14,
-            backgroundColor: color.withOpacity(.18),
+            backgroundColor: color.withValues(alpha: 0.18),
             child: Text("${index + 1}",
                 style: TextStyle(color: color, fontWeight: FontWeight.bold)),
           ),
