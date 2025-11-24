@@ -19,11 +19,11 @@ class AIService {
     required bool trauma,
     required String userText,
   }) async {
-    print("🔍 [AIService] 분석 시작..."); // 로그 추가
+    debugPrint("🔍 [AIService] 분석 시작...");
 
     try {
       if (apiKey.isEmpty) {
-        print("❌ [AIService] API Key 없음");
+        debugPrint("❌ [AIService] API Key 없음");
         return "API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.";
       }
 
@@ -35,10 +35,10 @@ class AIService {
         userText: userText,
       );
 
-      print("📤 [AIService] 서버로 요청 전송 중...");
+      debugPrint("📤 [AIService] 서버로 요청 전송 중...");
       final url = Uri.parse("$_baseUrl?key=$apiKey");
 
-      // 타임아웃을 10초로 단축하여 멈춤 현상 완화
+      // 타임아웃을 10초로 설정
       final response = await http
           .post(
             url,
@@ -51,34 +51,69 @@ class AIService {
                   ],
                 },
               ],
-              "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024},
+              "generationConfig": {
+                "temperature": 0.3,
+                "maxOutputTokens": 1024,
+              },
             }),
           )
           .timeout(const Duration(seconds: 10));
 
-      print("📥 [AIService] 응답 수신 완료 (상태코드: ${response.statusCode})");
+      debugPrint("📥 [AIService] 응답 수신 완료 (상태코드: ${response.statusCode})");
 
       if (response.statusCode != 200) {
-        print("❌ [AIService] 서버 에러: ${response.body}");
+        debugPrint("❌ [AIService] 서버 에러: ${response.body}");
         return "서버 연결 오류 (${response.statusCode})";
       }
 
-      // JSON 파싱
-      print("⚙️ [AIService] 데이터 해석 중...");
+      // ✅ 개선: JSON 파싱 및 응답 구조 검증 강화
+      debugPrint("⚙️ [AIService] 데이터 해석 중...");
       final data = await compute(_parseJson, response.body);
-      final parts = data["candidates"]?[0]?["content"]?["parts"];
 
+      // candidates 배열이 비어있거나 없는 경우
+      final candidates = data["candidates"];
+      if (candidates == null || candidates.isEmpty) {
+        debugPrint("❌ [AIService] candidates가 비어있음");
+        return "AI가 응답을 생성하지 못했습니다. 입력 내용을 확인해주세요.";
+      }
+
+      // finishReason 확인 (안전 필터링 등)
+      final finishReason = candidates[0]["finishReason"];
+      if (finishReason == "SAFETY") {
+        debugPrint("⚠️ [AIService] 안전 필터링으로 차단됨");
+        return "안전 정책으로 인해 응답을 생성할 수 없습니다. 입력 내용을 수정해주세요.";
+      }
+
+      // content > parts 구조 검증
+      final content = candidates[0]["content"];
+      if (content == null) {
+        debugPrint("❌ [AIService] content가 없음");
+        return "AI 응답 형식이 올바르지 않습니다.";
+      }
+
+      final parts = content["parts"];
       if (parts == null || parts.isEmpty) {
+        debugPrint("❌ [AIService] parts가 비어있음");
         return "AI 응답을 해석할 수 없습니다.";
       }
 
-      print("✅ [AIService] 분석 완료!");
-      return parts[0]["text"] ?? "분석 내용이 없습니다.";
+      // text 추출
+      final text = parts[0]["text"];
+      if (text == null || text.isEmpty) {
+        debugPrint("❌ [AIService] text가 비어있음");
+        return "분석 내용이 없습니다.";
+      }
+
+      debugPrint("✅ [AIService] 분석 완료!");
+      return text;
     } on TimeoutException {
-      print("⏰ [AIService] 시간 초과 발생");
-      return "응답 시간이 초과되었습니다. (10초 경과)";
+      debugPrint("⏰ [AIService] 시간 초과 발생");
+      return "응답 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.";
+    } on FormatException catch (e) {
+      debugPrint("💥 [AIService] JSON 파싱 에러: $e");
+      return "응답 데이터 형식 오류가 발생했습니다.";
     } catch (e) {
-      print("💥 [AIService] 시스템 에러: $e");
+      debugPrint("💥 [AIService] 시스템 에러: $e");
       return "시스템 에러 발생: $e";
     }
   }
@@ -124,6 +159,7 @@ class AIService {
   }
 }
 
+// Isolate에서 실행될 JSON 파싱 함수
 Map<String, dynamic> _parseJson(String responseBody) {
   return jsonDecode(responseBody);
 }
