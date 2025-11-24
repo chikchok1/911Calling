@@ -14,6 +14,13 @@ class _EmergencyTabState extends State<EmergencyTab> {
   int _elapsedSeconds = 0;
   Timer? _timer;
 
+  // 🔴 CPR 관련 변수들
+  int _cprCount = 0;
+  int _cprSeconds = 0;
+  bool _cprRunning = false;
+  Timer? _cprTimer;
+
+  // 119 긴급 신고 처리
   void _handleEmergencyCall() {
     setState(() {
       _isEmergency = true;
@@ -21,6 +28,7 @@ class _EmergencyTabState extends State<EmergencyTab> {
       _elapsedSeconds = 0;
     });
 
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _elapsedSeconds++;
@@ -63,7 +71,257 @@ class _EmergencyTabState extends State<EmergencyTab> {
   @override
   void dispose() {
     _timer?.cancel();
+    _cprTimer?.cancel();
     super.dispose();
+  }
+
+  // 🔻 CPR 로직들
+  void _startCpr() {
+    if (_cprRunning) return;
+
+    _cprRunning = true;
+    _cprTimer?.cancel();
+    _cprTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _cprSeconds++;
+      });
+    });
+  }
+
+  void _pauseCpr() {
+    _cprTimer?.cancel();
+    setState(() {
+      _cprRunning = false;
+    });
+  }
+
+  void _resetCpr() {
+    _cprTimer?.cancel();
+    setState(() {
+      _cprRunning = false;
+      _cprSeconds = 0;
+      _cprCount = 0;
+    });
+  }
+
+  void _pressCompression() {
+    if (!_cprRunning) _startCpr();
+    setState(() {
+      _cprCount++;
+    });
+  }
+
+  // 심정지 상황 행동 요약 카드
+  Widget _buildEmergencyGuideCard() {
+    final steps = [
+      {
+        'num': '1',
+        'icon': Icons.search,
+        'title': '의식 · 호흡 확인',
+        'desc': '어깨를 두드리며 반응과 정상 호흡 여부를 확인합니다.',
+      },
+      {
+        'num': '2',
+        'icon': Icons.phone_in_talk,
+        'title': '119 신고 · AED 요청',
+        'desc': '주변인에게 119 신고와 AED 요청을 맡기고 스피커폰을 켭니다.',
+      },
+      {
+        'num': '3',
+        'icon': Icons.favorite,
+        'title': '가슴압박 시작',
+        'desc': '흉부 중앙을 분당 100~120회 속도로 30회씩 강하고 빠르게 압박합니다.',
+      },
+      {
+        'num': '4',
+        'icon': Icons.bolt,
+        'title': 'AED 사용',
+        'desc': 'AED 전원을 켜고 패드를 붙인 뒤, 음성 안내에 따라 충격 후 즉시 압박을 재개합니다.',
+      },
+    ];
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.shade100),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '심정지 발생 시 행동 요약',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            '119 신고 전후로 반드시 따라야 할 핵심 4단계입니다.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 12),
+
+          // 단계 리스트
+          ...steps.map((step) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 번호 동그라미
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.red),
+                      color: Colors.white,
+                    ),
+                    child: Center(
+                      child: Text(
+                        step['num'] as String,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  Icon(step['icon'] as IconData, size: 20, color: Colors.red),
+                  const SizedBox(width: 10),
+
+                  // 텍스트
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          step['title'] as String,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          step['desc'] as String,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black87,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+
+          const SizedBox(height: 8),
+          const Text(
+            '※ 실제 상황에서는 가능한 한 빠르게 CPR을 시작하고, AED가 도착하면 즉시 사용하세요.',
+            style: TextStyle(fontSize: 11, color: Colors.redAccent),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCprCounterCard() {
+    String formatted =
+        '${(_cprSeconds ~/ 60).toString().padLeft(2, '0')}:${(_cprSeconds % 60).toString().padLeft(2, '0')}';
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.shade100),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+      ),
+      child: Column(
+        children: [
+          const Text(
+            "흉부 압박 카운트",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "경과 시간: $formatted",
+            style: const TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+
+          // 동그란 카운터
+          Container(
+            width: 150,
+            height: 150,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.red, width: 4),
+            ),
+            child: Center(
+              child: Text(
+                _cprCount.toString().padLeft(2, '0'),
+                style: const TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // 압박 버튼
+          SizedBox(
+            width: 160,
+            child: ElevatedButton(
+              onPressed: _pressCompression,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text(
+                "압박",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // 컨트롤 버튼
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton(
+                onPressed: _cprRunning ? _pauseCpr : _startCpr,
+                child: Text(_cprRunning ? "일시정지" : "재개"),
+              ),
+              const SizedBox(width: 20),
+              TextButton(onPressed: _resetCpr, child: const Text("초기화")),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -85,10 +343,7 @@ class _EmergencyTabState extends State<EmergencyTab> {
             const SizedBox(height: 4),
             Text(
               '골든타임을 지키는 스마트 응급 대응',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 24),
 
@@ -118,7 +373,9 @@ class _EmergencyTabState extends State<EmergencyTab> {
                     child: Container(
                       height: 160,
                       decoration: BoxDecoration(
-                        color: _isEmergency ? const Color(0xFF7F0000) : Colors.white,
+                        color: _isEmergency
+                            ? const Color(0xFF7F0000)
+                            : Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -202,7 +459,11 @@ class _EmergencyTabState extends State<EmergencyTab> {
                           ),
                           child: const Row(
                             children: [
-                              Icon(Icons.notifications, color: Colors.white, size: 16),
+                              Icon(
+                                Icons.notifications,
+                                color: Colors.white,
+                                size: 16,
+                              ),
                               SizedBox(width: 8),
                               Expanded(
                                 child: Column(
@@ -245,9 +506,13 @@ class _EmergencyTabState extends State<EmergencyTab> {
               ),
             ),
 
-            // Recording Status Card
+            // ✅ 항상 119 카드 바로 아래에 CPR 카드 표시
+            _buildEmergencyGuideCard(),
+
+            const SizedBox(height: 16),
+
+            // Recording Status Card는 예전처럼 신고 중일 때만 표시
             if (_isRecording) ...[
-              const SizedBox(height: 16),
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -269,7 +534,7 @@ class _EmergencyTabState extends State<EmergencyTab> {
                             Stack(
                               alignment: Alignment.center,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.circle,
                                   color: Colors.red,
                                   size: 20,
@@ -308,7 +573,10 @@ class _EmergencyTabState extends State<EmergencyTab> {
                         OutlinedButton.icon(
                           onPressed: _stopRecording,
                           icon: const Icon(Icons.stop_circle, size: 14),
-                          label: const Text('중지', style: TextStyle(fontSize: 11)),
+                          label: const Text(
+                            '중지',
+                            style: TextStyle(fontSize: 11),
+                          ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -324,25 +592,42 @@ class _EmergencyTabState extends State<EmergencyTab> {
                     // Time and Status
                     Row(
                       children: [
-                        Icon(Icons.access_time, size: 14, color: Colors.grey[700]),
+                        Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: Colors.grey[700],
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           _formatTime(_elapsedSeconds),
-                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Icon(Icons.mic, size: 14, color: Colors.grey[700]),
                         const SizedBox(width: 4),
                         Text(
                           '음성 기록',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
                         ),
                         const SizedBox(width: 16),
-                        Icon(Icons.description, size: 14, color: Colors.grey[700]),
+                        Icon(
+                          Icons.description,
+                          size: 14,
+                          color: Colors.grey[700],
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '이벤트 로그',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
                         ),
                       ],
                     ),
@@ -368,7 +653,10 @@ class _EmergencyTabState extends State<EmergencyTab> {
                           ),
                           const SizedBox(height: 8),
                           _buildEventItem('119 신고 접수', _elapsedSeconds - 120),
-                          _buildEventItem('주변 사용자 알림 전송', _elapsedSeconds - 115),
+                          _buildEventItem(
+                            '주변 사용자 알림 전송',
+                            _elapsedSeconds - 115,
+                          ),
                           _buildEventItem('CPR 가이드 시작', _elapsedSeconds - 90),
                         ],
                       ),
@@ -377,10 +665,7 @@ class _EmergencyTabState extends State<EmergencyTab> {
 
                     Text(
                       '💾 모든 음성, 시간, 이벤트가 자동 저장되어 구조대원 및 의료진에게 전달됩니다',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -402,17 +687,11 @@ class _EmergencyTabState extends State<EmergencyTab> {
         children: [
           Text(
             '• $text',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[700],
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
           ),
           Text(
             displayTime,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
           ),
         ],
       ),
