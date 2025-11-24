@@ -805,7 +805,11 @@ class _GuideTabState extends State<GuideTab> {
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
+<<<<<<< HEAD
             color: Colors.red.shade50,
+=======
+            color: e.bgColor.withValues(alpha: 0.15),
+>>>>>>> 0cdc5225d581ee4639677cd95e82f8f286436095
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.red.shade100),
           ),
@@ -947,6 +951,7 @@ class _GuideTabState extends State<GuideTab> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
+<<<<<<< HEAD
         color: Colors.red.shade50,
         borderRadius: BorderRadius.circular(16),
       ),
@@ -1014,6 +1019,20 @@ class _GuideTabState extends State<GuideTab> {
           const Text(
             '⚠️ 절단 부위를 물에 직접 넣지 마세요.\n⚠️ 출혈이 심하면 즉시 119에 신고하세요.',
             style: TextStyle(color: Colors.red, fontSize: 12, height: 1.3),
+=======
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4)
+          ]),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: color.withValues(alpha: 0.18),
+            child: Text("${index + 1}",
+                style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+>>>>>>> 0cdc5225d581ee4639677cd95e82f8f286436095
           ),
         ],
       ),
