@@ -43,11 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-
-
 #api key
 lib/secrets_private.dart
 
 # mp4
 assets/audio/*.mp4
+
+
+# Environment variables (API keys)
+.env
+*.env
+!.env.example
