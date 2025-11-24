@@ -57,9 +57,9 @@ lib/config/secrets.dart
 
 # Firebase 설정 파일 (민감한 정보 포함)
 # 팀 프로젝트라면 주석 해제를 고려하세요
- ios/Runner/GoogleService-Info.plist
- android/app/google-services.json
- lib/firebase_options.dart
+ios/Runner/GoogleService-Info.plist
+android/app/google-services.json
+lib/firebase_options.dart
 
 # 로컬 키 파일
 local.properties
