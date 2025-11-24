@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
+
+import '../models/quick_check.dart';
+import '../models/ai_analysis_result.dart';
 import '../services/ai_service.dart';
+import '../services/tts_service.dart';
+import '../services/stt_service.dart';
+import '../utils/ui_helper.dart';
+import '../widgets/quick_check_grid.dart';
+import '../widgets/situation_input_card.dart';
+import '../widgets/analysis_result_card.dart';
 
 class AIAnalysisTab extends StatefulWidget {
   const AIAnalysisTab({super.key});
@@ -13,129 +20,79 @@ class AIAnalysisTab extends StatefulWidget {
 }
 
 class _AIAnalysisTabState extends State<AIAnalysisTab> {
-  final FlutterTts _flutterTts = FlutterTts();
-  late stt.SpeechToText _speech;
+  // Services
+  late final TTSService _ttsService;
+  late final STTService _sttService;
+  late final AIService _aiService;
 
-  bool _isListening = false;
+  // State
   bool _isLoading = false;
   bool _showAiResponse = false;
-  bool _isSpeaking = false;
-
   final Set<String> _selectedChecks = {};
   final TextEditingController _textController = TextEditingController();
 
-  String _aiJudgment = "";
-  String _searchKeyword = "";
-  List<String> _aiSteps = [];
+  AIAnalysisResult? _analysisResult;
 
-  final List<QuickCheck> _quickChecks = [
-    QuickCheck(id: 'conscious', label: '의식 있음', icon: Icons.psychology),
-    QuickCheck(id: 'breathing', label: '호흡 정상', icon: Icons.air),
-    QuickCheck(id: 'pulse', label: '맥박 감지', icon: Icons.favorite),
-    QuickCheck(id: 'visible_injury', label: '외상 확인', icon: Icons.visibility),
-  ];
+  // Data
+  final List<QuickCheck> _quickChecks = QuickCheck.defaultChecks;
 
   @override
   void initState() {
     super.initState();
-    _initTts();
-    _speech = stt.SpeechToText();
+    _initializeServices();
   }
 
-  Future<void> _initTts() async {
+  /// 서비스 초기화
+  Future<void> _initializeServices() async {
+    _ttsService = TTSService();
+    _sttService = STTService();
+    _aiService = AIService();
+
+    // TTS 초기화
     try {
-      await _flutterTts.setLanguage("ko-KR");
-      await _flutterTts.setPitch(1.0);
-      await _flutterTts.setSpeechRate(0.6);
-
-      _flutterTts.setCompletionHandler(() {
-        setState(() => _isSpeaking = false);
-      });
-
-      _flutterTts.setCancelHandler(() {
-        setState(() => _isSpeaking = false);
-      });
+      await _ttsService.initialize();
     } catch (e) {
-      print("TTS 초기화 에러: $e");
-    }
-  }
-
-  void _listen() async {
-    var status = await Permission.microphone.request();
-    if (status != PermissionStatus.granted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('마이크 권한이 필요합니다.')),
-      );
-      return;
-    }
-
-    if (!_isListening) {
-      bool available = await _speech.initialize(
-        onStatus: (val) {
-          if (val == 'done' || val == 'notListening') {
-            setState(() => _isListening = false);
-          }
-        },
-        onError: (val) => print('음성 에러: $val'),
-      );
-
-      if (available) {
-        setState(() => _isListening = true);
-        _speech.listen(
-          onResult: (val) {
-            setState(() {
-              _textController.text = val.recognizedWords;
-            });
-          },
-          localeId: 'ko_KR',
-        );
+      if (mounted) {
+        UIHelper.showError(context, '음성 안내 기능을 사용할 수 없습니다');
       }
-    } else {
-      setState(() => _isListening = false);
-      _speech.stop();
     }
-  }
 
-  Future<void> _speakResult() async {
-    if (_isSpeaking) {
-      await _flutterTts.stop();
+    // 상태 변경 리스너 설정
+    _ttsService.onSpeakingStateChanged = (isSpeaking) {
+      if (mounted) setState(() {});
+    };
+
+    _sttService.onListeningStateChanged = (isListening) {
+      if (mounted) setState(() {});
+    };
+
+    _sttService.onResult = (text) {
       setState(() {
-        _isSpeaking = false;
+        _textController.text = text;
       });
-      return;
-    }
-
-    if (_aiJudgment.isEmpty) return;
-
-    String textToSpeak = "응급 상황 분석 결과, $_aiJudgment 입니다. 행동 수칙을 안내합니다. ";
-    for (int i = 0; i < _aiSteps.length; i++) {
-      textToSpeak += "${i + 1}번째, ${_aiSteps[i]}. ".replaceAll(
-        RegExp(r'^\d+\.'),
-        '',
-      );
-    }
-
-    setState(() {
-      _isSpeaking = true;
-    });
-
-    await _flutterTts.speak(textToSpeak);
+    };
   }
 
-  Future<void> _launchYoutubeSearch() async {
-    if (_searchKeyword.isEmpty && _aiJudgment.isEmpty) return;
-
-    final keyword = _searchKeyword.isNotEmpty ? _searchKeyword : _aiJudgment;
-    final query = "$keyword 응급처치";
-    final url = Uri.parse(
-      "https://www.youtube.com/results?search_query=${Uri.encodeComponent(query)}",
-    );
-
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.inAppBrowserView);
+  /// 음성 입력 토글
+  Future<void> _handleVoiceInput() async {
+    try {
+      await _sttService.toggleListening();
+    } on PermissionPermanentlyDeniedException catch (e) {
+      if (mounted) {
+        UIHelper.showPermissionSnackBar(context, e.toString());
+      }
+    } on PermissionDeniedException catch (e) {
+      if (mounted) {
+        UIHelper.showError(context, e.toString());
+      }
+    } catch (e) {
+      if (mounted) {
+        UIHelper.showError(context, e.toString());
+      }
     }
   }
 
+  /// 빠른 체크 토글
   void _toggleCheck(String id) {
     setState(() {
       if (_selectedChecks.contains(id)) {
@@ -146,16 +103,15 @@ class _AIAnalysisTabState extends State<AIAnalysisTab> {
     });
   }
 
-  void _handleAnalyze() async {
+  /// AI 분석 시작
+  Future<void> _handleAnalyze() async {
     if (_selectedChecks.isEmpty && _textController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('환자 상태를 입력해주세요')),
-      );
+      UIHelper.showError(context, '환자 상태를 입력해주세요');
       return;
     }
 
     FocusScope.of(context).unfocus();
-    await _flutterTts.stop();
+    await _ttsService.stop();
 
     setState(() {
       _isLoading = true;
@@ -163,8 +119,7 @@ class _AIAnalysisTabState extends State<AIAnalysisTab> {
     });
 
     try {
-      final aiService = AIService();
-      final rawResult = await aiService.analyzeWithAI(
+      final rawResult = await _aiService.analyzeWithAI(
         conscious: _selectedChecks.contains('conscious'),
         breathing: _selectedChecks.contains('breathing'),
         pulse: _selectedChecks.contains('pulse'),
@@ -172,302 +127,115 @@ class _AIAnalysisTabState extends State<AIAnalysisTab> {
         userText: _textController.text,
       );
 
-      String tempJudgment = "분석 결과 없음";
-      String tempKeyword = "";
-      List<String> tempSteps = [];
-
-      final lines = rawResult.split('\n');
-      for (var line in lines) {
-        line = line.trim();
-        if (line.isEmpty) continue;
-
-        if (line.startsWith('✅ 판단:')) {
-          tempJudgment = line.replaceAll('✅ 판단:', '').trim();
-        } else if (line.startsWith('🔍 검색어:')) {
-          tempKeyword = line.replaceAll('🔍 검색어:', '').trim();
-        } else if (RegExp(r'^\d+\.').hasMatch(line)) {
-          tempSteps.add(line.replaceFirst(RegExp(r'^\d+\.\s*'), ''));
-        }
-      }
-
-      if (tempKeyword.isEmpty) {
-        tempKeyword = tempJudgment.split(',')[0].split(' ')[0];
-      }
+      final result = AIAnalysisResult.fromRawText(rawResult);
 
       if (!mounted) return;
 
       setState(() {
-        _aiJudgment = tempJudgment;
-        _searchKeyword = tempKeyword;
-        _aiSteps = tempSteps;
+        _analysisResult = result;
         _showAiResponse = true;
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('오류 발생: $e')),
+      setState(() => _isLoading = false);
+      UIHelper.showError(context, '오류 발생: $e');
+    }
+  }
+
+  /// YouTube 검색
+  Future<void> _launchYoutubeSearch() async {
+    if (_analysisResult == null) return;
+
+    final keyword = _analysisResult!.searchKeyword.isNotEmpty
+        ? _analysisResult!.searchKeyword
+        : _analysisResult!.judgment;
+    final query = "$keyword 응급처치";
+    final url = Uri.parse(
+      "https://www.youtube.com/results?search_query=${Uri.encodeComponent(query)}",
+    );
+
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'URL을 열 수 없습니다';
+      }
+    } catch (e) {
+      debugPrint('YouTube 링크 열기 실패: $e');
+      if (mounted) {
+        UIHelper.showError(context, 'YouTube를 열 수 없습니다');
+      }
+    }
+  }
+
+  /// 음성 안내
+  Future<void> _handleSpeak() async {
+    if (!_ttsService.isAvailable) {
+      UIHelper.showError(context, '음성 안내 기능을 사용할 수 없습니다');
+      return;
+    }
+
+    if (_ttsService.isSpeaking) {
+      await _ttsService.stop();
+      return;
+    }
+
+    if (_analysisResult == null) return;
+
+    String textToSpeak =
+        "응급 상황 분석 결과, ${_analysisResult!.judgment} 입니다. 행동 수칙을 안내합니다. ";
+    for (int i = 0; i < _analysisResult!.steps.length; i++) {
+      textToSpeak += "${i + 1}번째, ${_analysisResult!.steps[i]}. ".replaceAll(
+        RegExp(r'^\d+\.'),
+        '',
       );
+    }
+
+    try {
+      await _ttsService.speak(textToSpeak);
+    } catch (e) {
+      if (mounted) {
+        UIHelper.showError(context, '음성 재생 중 오류가 발생했습니다');
+      }
     }
   }
 
   @override
   void dispose() {
     _textController.dispose();
-    _flutterTts.stop();
+    _ttsService.dispose();
+    _sttService.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Colors.red[400]!;
+    final lightColor = Colors.red[50]!;
+
     return SafeArea(
       child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: Scrollbar(
           child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const Text(
-                    'AI 기반 응급 상황 분석',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.purple,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '환자 상태를 입력하세요',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '빠른 상태 체크',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 2.5,
-                          ),
-                          itemCount: _quickChecks.length,
-                          itemBuilder: (context, index) {
-                            final check = _quickChecks[index];
-                            final isSelected = _selectedChecks.contains(check.id);
-                            return InkWell(
-                              onTap: () => _toggleCheck(check.id),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: isSelected ? Colors.purple : Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: isSelected ? Colors.purple : Colors.grey[300]!,
-                                  ),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      check.icon,
-                                      size: 16,
-                                      color: isSelected ? Colors.white : Colors.grey[700],
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Flexible(
-                                      child: Text(
-                                        check.label,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: isSelected ? Colors.white : Colors.grey[700],
-                                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _listen,
-                            icon: Icon(_isListening ? Icons.mic : Icons.mic_none, size: 20),
-                            label: Text(
-                              _isListening ? '듣는 중...' : '음성으로 설명하기',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _isListening ? Colors.red : Colors.white,
-                              foregroundColor: _isListening ? Colors.white : Colors.grey[700],
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              side: BorderSide(color: _isListening ? Colors.red : Colors.grey[300]!),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _textController,
-                          maxLines: 3,
-                          cursorColor: Colors.red,
-                          decoration: InputDecoration(
-                            hintText: '환자 상태를 입력하세요...',
-                            hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Colors.purple),
-                            ),
-                          ),
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _isLoading ? null : _handleAnalyze,
-                            icon: _isLoading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                : const Icon(Icons.psychology, size: 20),
-                            label: Text(
-                              _isLoading ? '분석 중...' : 'AI 분석 시작',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_showAiResponse) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.purple[50],
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.purple[200]!),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.purple,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'AI 분석 결과',
-                                  style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: Colors.red),
-                                ),
-                                child: const Text(
-                                  '긴급',
-                                  style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _aiJudgment,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red),
-                          ),
-                          const SizedBox(height: 12),
-                          const Divider(height: 1, color: Colors.grey),
-                          const SizedBox(height: 12),
-                          if (_aiSteps.isEmpty)
-                            const Text("구체적인 행동 수칙이 없습니다.")
-                          else
-                            ..._aiSteps.asMap().entries.map((entry) {
-                              return _buildStep(entry.key + 1, entry.value);
-                            }),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _launchYoutubeSearch,
-                                  icon: const Text('📹'),
-                                  label: const Text('영상 보기'),
-                                  style: OutlinedButton.styleFrom(backgroundColor: Colors.white),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _speakResult,
-                                  icon: Text(_isSpeaking ? '⏹' : '🔊'),
-                                  label: Text(_isSpeaking ? '멈추기' : '음성 듣기'),
-                                  style: OutlinedButton.styleFrom(
-                                    backgroundColor: _isSpeaking ? Colors.red[50] : Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHeader(primaryColor),
+                const SizedBox(height: 24),
+                _buildQuickCheckSection(primaryColor),
+                const SizedBox(height: 24),
+                _buildSituationInputSection(primaryColor, lightColor),
+                const SizedBox(height: 24),
+                _buildAnalyzeButton(primaryColor),
+                if (_showAiResponse && _analysisResult != null) ...[
+                  const SizedBox(height: 30),
+                  _buildResultSection(primaryColor, lightColor),
                 ],
-              ),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ),
@@ -475,40 +243,118 @@ class _AIAnalysisTabState extends State<AIAnalysisTab> {
     );
   }
 
-  Widget _buildStep(int number, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: const BoxDecoration(color: Colors.purple, shape: BoxShape.circle),
-            child: Center(
-              child: Text(
-                '$number',
-                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+  /// 헤더
+  Widget _buildHeader(Color primaryColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.monitor_heart_outlined, color: primaryColor, size: 28),
+            const SizedBox(width: 8),
+            const Text(
+              'AI 응급 분석',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          '환자의 증상을 선택하거나 말씀해주세요.',
+          style: TextStyle(fontSize: 15, color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  /// 빠른 상태 체크 섹션
+  Widget _buildQuickCheckSection(Color primaryColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '빠른 상태 체크',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        QuickCheckGrid(
+          checks: _quickChecks,
+          selectedIds: _selectedChecks,
+          onToggle: _toggleCheck,
+          primaryColor: primaryColor,
+        ),
+      ],
+    );
+  }
+
+  /// 상황 입력 섹션
+  Widget _buildSituationInputSection(Color primaryColor, Color lightColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '상황 설명',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        SituationInputCard(
+          controller: _textController,
+          isListening: _sttService.isListening,
+          onMicPressed: _handleVoiceInput,
+          primaryColor: primaryColor,
+          lightColor: lightColor,
+        ),
+      ],
+    );
+  }
+
+  /// 분석 버튼
+  Widget _buildAnalyzeButton(Color primaryColor) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleAnalyze,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryColor,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(text, style: const TextStyle(fontSize: 12)),
-            ),
-          ),
-        ],
+          elevation: 0,
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Text(
+                '응급 분석 시작',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
       ),
     );
   }
-}
 
-class QuickCheck {
-  final String id;
-  final String label;
-  final IconData icon;
-
-  QuickCheck({required this.id, required this.label, required this.icon});
+  /// 결과 섹션
+  Widget _buildResultSection(Color primaryColor, Color lightColor) {
+    return AnalysisResultCard(
+      judgment: _analysisResult!.judgment,
+      steps: _analysisResult!.steps,
+      onYoutubePressed: _launchYoutubeSearch,
+      onSpeakPressed: _handleSpeak,
+      isSpeaking: _ttsService.isSpeaking,
+      ttsAvailable: _ttsService.isAvailable,
+      primaryColor: primaryColor,
+      lightColor: lightColor,
+    );
+  }
 }
