@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+/// AI 서비스 - Gemini API를 사용한 응급 상황 분석 및 가이드 제공
 class AIService {
   // 환경 변수에서 API 키 로드
   String get apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
@@ -11,6 +12,10 @@ class AIService {
   static const String _modelName = "gemini-2.0-flash";
   static const String _baseUrl =
       "https://generativelanguage.googleapis.com/v1beta/models/$_modelName:generateContent";
+
+  // ========================================
+  // 1. AI 응급 상황 분석 (AI Analysis Tab용)
+  // ========================================
 
   Future<String> analyzeWithAI({
     required bool conscious,
@@ -51,10 +56,7 @@ class AIService {
                   ],
                 },
               ],
-              "generationConfig": {
-                "temperature": 0.3,
-                "maxOutputTokens": 1024,
-              },
+              "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024},
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -118,6 +120,7 @@ class AIService {
     }
   }
 
+  /// 응급 분석용 프롬프트 생성
   String _buildPrompt({
     required bool conscious,
     required bool breathing,
@@ -156,6 +159,150 @@ class AIService {
 2. **행동 묘사**: '안정을 취하세요' 대신 '편평한 곳에 눕히고 다리를 올려주세요' 처럼 구체적으로 쓸 것.
 3. **진료과 명시**: 단순히 '병원 방문'이라고 하지 말고, 증상에 맞는 '진료과(내과, 외과 등)'를 콕 집어줄 것.
 """;
+  }
+
+  // ========================================
+  // 2. 응급 가이드 검색 (Guide Tab용)
+  // ========================================
+
+  /// 응급 상황에 대한 가이드 제공
+  ///
+  /// [query] 사용자가 입력한 응급 상황 또는 증상
+  /// 예: "심장이 아파요", "화상을 입었어요"
+  Future<String> getEmergencyGuide(String query) async {
+    debugPrint("📖 [AIService - Guide] 가이드 검색 시작: $query");
+
+    try {
+      if (apiKey.isEmpty) {
+        debugPrint("❌ [AIService - Guide] API Key 없음");
+        return 'Gemini API 키가 설정되지 않았습니다.\n.env 파일에서 GEMINI_API_KEY를 설정해 주세요.';
+      }
+
+      final promptText = _buildGuidePrompt(query);
+      final url = Uri.parse("$_baseUrl?key=$apiKey");
+
+      debugPrint("📤 [AIService - Guide] 서버로 요청 전송 중...");
+
+      final response = await http
+          .post(
+            url,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "contents": [
+                {
+                  "parts": [
+                    {"text": promptText},
+                  ],
+                },
+              ],
+              "generationConfig": {"temperature": 0.4, "maxOutputTokens": 200},
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint(
+        "📥 [AIService - Guide] 응답 수신 완료 (상태코드: ${response.statusCode})",
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint("❌ [AIService - Guide] 서버 에러: ${response.body}");
+        return '서버 연결 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.';
+      }
+
+      debugPrint("📄 [AIService - Guide] 응답 본문: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...");
+      
+      final data = await compute(_parseJson, response.body);
+      debugPrint("🔍 [AIService - Guide] 파싱된 데이터 구조: ${data.keys}");
+      
+      final text = _extractTextFromResponse(data);
+      debugPrint("📝 [AIService - Guide] 추출된 텍스트 길이: ${text.length}");
+
+      if (text.isEmpty) {
+        debugPrint("⚠️ [AIService - Guide] 텍스트가 비어있음. 전체 응답: $data");
+        return '응답을 생성할 수 없습니다.\n다른 방식으로 질문해주세요.';
+      }
+
+      debugPrint("✅ [AIService - Guide] 가이드 생성 완료!");
+      return text;
+    } on TimeoutException {
+      debugPrint("⏰ [AIService - Guide] 시간 초과 발생");
+      return '응답 시간이 초과되었습니다.\n네트워크 연결을 확인해주세요.';
+    } catch (e) {
+      debugPrint("💥 [AIService - Guide] 에러: $e");
+      return '일시적인 오류가 발생했습니다.\n잠시 후 다시 시도해주세요.';
+    }
+  }
+
+  /// 가이드 검색용 프롬프트 생성
+  String _buildGuidePrompt(String query) {
+    return """
+당신은 응급처치 전문가입니다. 다음 상황에 대해 **매우 짧고 간단하게** 응급처치 방법을 알려주세요.
+
+상황: $query
+
+아래 형식으로만 답변하세요:
+
+상황: [10자 이내로 요약]
+
+응급처치:
+1. [20자 이내]
+2. [20자 이내]
+3. [20자 이내]
+
+주의: [15자 이내]
+병원: [10자 이내]
+
+**중요**: 각 항목은 반드시 지정된 글자 수를 초과하지 마세요. 매우 짧게 핵심만 작성하세요.
+""";
+  }
+
+  // ========================================
+  // 3. 공통 유틸리티 메서드
+  // ========================================
+
+  /// Gemini API 응답에서 텍스트 추출
+  String _extractTextFromResponse(Map<String, dynamic> data) {
+    try {
+      final candidates = data['candidates'] as List?;
+
+      if (candidates == null || candidates.isEmpty) {
+        debugPrint("❌ [AIService] candidates가 비어있음");
+        return '';
+      }
+
+      // finishReason 확인
+      final finishReason = candidates[0]['finishReason'];
+      if (finishReason == 'SAFETY') {
+        debugPrint("⚠️ [AIService] 안전 필터링으로 차단됨");
+        return '안전 정책으로 인해 응답을 생성할 수 없습니다.\n입력 내용을 수정해주세요.';
+      }
+
+      final content = candidates[0]['content'];
+      if (content == null) {
+        debugPrint("❌ [AIService] content가 없음");
+        return '';
+      }
+
+      final parts = content['parts'] as List?;
+      if (parts == null || parts.isEmpty) {
+        debugPrint("❌ [AIService] parts가 비어있음");
+        return '';
+      }
+
+      // 모든 parts의 텍스트 결합
+      final buffer = StringBuffer();
+      for (final part in parts) {
+        final text = part['text']?.toString() ?? '';
+        if (text.isNotEmpty) {
+          buffer.writeln(text);
+        }
+      }
+
+      return buffer.toString().trim();
+    } catch (e) {
+      debugPrint("💥 [AIService] 응답 파싱 에러: $e");
+      return '';
+    }
   }
 }
 
