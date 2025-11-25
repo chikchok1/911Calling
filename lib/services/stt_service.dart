@@ -41,6 +41,7 @@ class STTService {
     // 음성 인식 초기화 및 시작
     bool available = await _speech.initialize(
       onStatus: (val) {
+        debugPrint('STT 상태 변경: $val');
         if (val == 'done' || val == 'notListening') {
           _isListening = false;
           onListeningStateChanged?.call(false);
@@ -64,8 +65,16 @@ class STTService {
     _speech.listen(
       onResult: (val) {
         onResult?.call(val.recognizedWords);
+        
+        // 최종 결과가 나오면 자동으로 중지
+        if (val.finalResult) {
+          debugPrint('STT 최종 결과 수신, 자동 중지');
+          stop();
+        }
       },
       localeId: 'ko_KR',
+      listenFor: const Duration(seconds: 30), // 최대 30초
+      pauseFor: const Duration(seconds: 3), // 3초 침묵 시 자동 종료
     );
   }
 
