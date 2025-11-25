@@ -1,4 +1,6 @@
+# ============================================
 # Miscellaneous
+# ============================================
 *.class
 *.log
 *.pyc
@@ -12,17 +14,25 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# ============================================
+# IntelliJ / Android Studio
+# ============================================
 *.iml
 *.ipr
 *.iws
 .idea/
+.gradle/
+captures/
 
+# ============================================
 # VS Code
+# ============================================
 .vscode/
 *.code-workspace
 
-# Flutter/Dart/Pub related
+# ============================================
+# Flutter/Dart/Pub
+# ============================================
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
@@ -30,48 +40,82 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
-/coverage/
-
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+build/
+coverage/
 
 # ============================================
-# 🔐 API Keys and Sensitive Information
+# Android
 # ============================================
+android/.gradle/
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/app/output/
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+android/app/debug
+android/app/profile
+android/app/release
 
-# ⚠️ 절대로 Git에 커밋하면 안 되는 파일들!
+# ============================================
+# iOS
+# ============================================
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/
+ios/Runner/GeneratedPluginRegistrant.*
+ios/ServiceDefinitions.json
+ios/Runner/GoogleService-Info.plist
+
+# ============================================
+# Firebase / Secrets
+# ============================================
 .env
+*.env
+!.env.example
 .env.local
 .env.*.local
 lib/config/api_keys.dart
 lib/config/secrets.dart
-
-# Firebase 설정 파일 (민감한 정보 포함)
-# 팀 프로젝트라면 주석 해제를 고려하세요
-ios/Runner/GoogleService-Info.plist
+lib/secrets_private.dart
+firebase_options.dart
 android/app/google-services.json
-lib/firebase_options.dart
 
-# 로컬 키 파일
-local.properties
-key.properties
-android/key.properties
+# ============================================
+# Build Artifacts
+# ============================================
+*.apk
+*.ap_
+*.aab
+*.ipa
+*.app
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Symbolication
+app.*.symbols
+
+# Obfuscation
+app.*.map.json
+
+# ============================================
+# Web
+# ============================================
+web/favicon.png
+
+# ============================================
+# Testing & Coverage
+# ============================================
+test/.test_coverage.dart
+test_driver/
+*.coverage
 
 # ============================================
 # OS Specific
 # ============================================
-
 # macOS
-.DS_Store
 .AppleDouble
 .LSOverride
 ._*
@@ -91,98 +135,18 @@ $RECYCLE.BIN/
 .Trash-*
 
 # ============================================
-# IDE Specific
-# ============================================
-
-# Android Studio / IntelliJ
-.idea/
-*.iml
-*.ipr
-*.iws
-.gradle/
-local.properties
-captures/
-
-# Xcode
-*.xcodeproj/*
-!*.xcodeproj/project.pbxproj
-!*.xcodeproj/xcshareddata/
-!*.xcworkspace/contents.xcworkspacedata
-/*.gcno
-**/xcshareddata/WorkspaceSettings.xcsettings
-
-# ============================================
-# Flutter Generated Files
-# ============================================
-
-# iOS
-ios/Pods/
-ios/.symlinks/
-ios/Flutter/Flutter.framework
-ios/Flutter/Flutter.podspec
-ios/Flutter/Generated.xcconfig
-ios/Flutter/app.flx
-ios/Flutter/app.zip
-ios/Flutter/flutter_assets/
-ios/Flutter/flutter_export_environment.sh
-ios/ServiceDefinitions.json
-ios/Runner/GeneratedPluginRegistrant.*
-
-# Android
-android/.gradle/
-android/captures/
-android/gradlew
-android/gradlew.bat
-android/local.properties
-android/app/output/
-android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
-
-# Web
-web/favicon.png
-
-# ============================================
-# Build Artifacts
-# ============================================
-
-# APK/IPA/AAB
-*.apk
-*.ap_
-*.aab
-*.ipa
-*.app
-
-# Executables
-*.exe
-*.dll
-*.so
-*.dylib
-
-# ============================================
-# Testing & Coverage
-# ============================================
-
-coverage/
-test/.test_coverage.dart
-test_driver/
-*.coverage
-.test_coverage.dart
-
-# ============================================
 # Temporary Files
 # ============================================
-
 *.tmp
 *.temp
 *.bak
 *.backup
 *~.nib
-*.swp
 *.swo
 
 # ============================================
 # Personal Notes
 # ============================================
-
 NOTES.md
 TODO.md
 PRIVATE.md
@@ -191,20 +155,12 @@ SECRETS.md
 # ============================================
 # Logs
 # ============================================
-
-*.log
 logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-#api key
-lib/secrets_private.dart
 
-# mp4
+# ============================================
+# Assets
+# ============================================
 assets/audio/*.mp4
-
-
-# Environment variables (API keys)
-.env
-*.env
-!.env.example

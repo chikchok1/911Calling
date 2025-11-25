@@ -3,7 +3,7 @@ import 'package:video_player/video_player.dart'; //
 import 'package:flutter_tts/flutter_tts.dart'; // TTS
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../secrets.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GuideTab extends StatefulWidget {
   const GuideTab({super.key});
@@ -304,72 +304,103 @@ class _GuideTabState extends State<GuideTab> {
       title: '골절',
       icon: Icons.accessibility_new,
       color: Colors.teal,
-      bgColor: Colors.teal,
+      bgColor: Color(0xFFE0F2F1),
       description: '골절 시 응급 대처',
       steps: ['움직이지 않게 고정', '냉찜질', '압박 금지', '119 신고'],
+      textGuide: '골절에 대한 안내는 준비 중입니다.',
+      ttsSteps: [
+        '골절 부위를 움직이지 않게 고정하세요.',
+        '냉찜질을 하세요.',
+        '압박하지 마세요.',
+        '119에 신고하세요.',
+      ],
     ),
     EmergencyType(
       id: 'poison',
       title: '중독',
       icon: Icons.warning_amber,
       color: Colors.green,
-      bgColor: Colors.green,
+      bgColor: Color(0xFFE8F5E9),
       description: '중독 응급처치',
       steps: ['노출 차단', '의식 확인', '구토 유도 금지', '119 신고'],
+      textGuide: '중독에 대한 안내는 준비 중입니다.',
+      ttsSteps: ['노출을 차단하세요.', '의식을 확인하세요.', '구토를 유도하지 마세요.', '119에 신고하세요.'],
     ),
     EmergencyType(
       id: 'hypoglycemia',
       title: '저혈당',
       icon: Icons.local_cafe,
       color: Colors.brown,
-      bgColor: Colors.brown,
+      bgColor: Color(0xFFEFEBE9),
       description: '저혈당 처리',
       steps: ['증상 확인', '당 섭취', '휴식', '호전 없으면 119'],
+      textGuide: '저혈당에 대한 안내는 준비 중입니다.',
+      ttsSteps: ['증상을 확인하세요.', '당을 섭취하세요.', '휴식을 취하세요.', '호전이 없으면 119에 신고하세요.'],
     ),
     EmergencyType(
       id: 'dehydration',
       title: '탈수',
       icon: Icons.opacity,
       color: Colors.blueGrey,
-      bgColor: Colors.blueGrey,
+      bgColor: Color(0xFFECEFF1),
       description: '탈수 응급처치',
       steps: ['시원한 곳으로 이동', '수분 보충', '휴식', '심하면 병원 방문'],
+      textGuide: '탈수에 대한 안내는 준비 중입니다.',
+      ttsSteps: ['시원한 곳으로 이동하세요.', '수분을 보충하세요.', '휴식을 취하세요.', '심하면 병원을 방문하세요.'],
     ),
     EmergencyType(
       id: 'heatstroke',
       title: '열사병',
       icon: Icons.wb_sunny,
       color: Colors.deepOrange,
-      bgColor: Colors.deepOrange,
+      bgColor: Color(0xFFFBE9E7),
       description: '고열 환경에서 발생',
       steps: ['즉시 그늘 이동', '옷 느슨하게', '물 보급', '필요시 병원'],
+      textGuide: '열사병에 대한 안내는 준비 중입니다.',
+      ttsSteps: [
+        '즉시 그늘로 이동하세요.',
+        '옷을 느슨하게 하세요.',
+        '물을 보급하세요.',
+        '필요시 병원을 방문하세요.',
+      ],
     ),
     EmergencyType(
       id: 'hypothermia',
       title: '저체온증',
       icon: Icons.ac_unit,
       color: Colors.lightBlue,
-      bgColor: Colors.lightBlue,
+      bgColor: Color(0xFFE1F5FE),
       description: '저체온증 응급처치',
       steps: ['따뜻한 곳 이동', '젖은 옷 제거', '담요 덮기', '서서히 체온 올리기'],
+      textGuide: '저체온증에 대한 안내는 준비 중입니다.',
+      ttsSteps: [
+        '따뜻한 곳으로 이동하세요.',
+        '젖은 옷을 제거하세요.',
+        '담요를 덮어주세요.',
+        '서서히 체온을 올리세요.',
+      ],
     ),
     EmergencyType(
       id: 'traffic',
       title: '교통사고',
       icon: Icons.car_crash,
       color: Colors.indigo,
-      bgColor: Colors.indigo,
+      bgColor: Color(0xFFE8EAF6),
       description: '사고 현장 응급 대처',
       steps: ['현장 안전 확보', '환자 확인', '출혈 여부 확인', '즉시 신고'],
+      textGuide: '교통사고에 대한 안내는 준비 중입니다.',
+      ttsSteps: ['현장 안전을 확보하세요.', '환자를 확인하세요.', '출혈 여부를 확인하세요.', '즉시 신고하세요.'],
     ),
     EmergencyType(
       id: 'animal',
       title: '동물 상처',
       icon: Icons.pets,
       color: Colors.brown,
-      bgColor: Colors.brown,
+      bgColor: Color(0xFFEFEBE9),
       description: '개·고양이·야생동물 상처',
       steps: ['상처 세척', '지혈', '소독', '병원 방문'],
+      textGuide: '동물 상처에 대한 안내는 준비 중입니다.',
+      ttsSteps: ['상처를 세척하세요.', '지혈하세요.', '소독하세요.', '병원을 방문하세요.'],
     ),
   ];
   @override
@@ -463,14 +494,14 @@ class _GuideTabState extends State<GuideTab> {
     super.dispose();
   }
 
-  // --- 보기 좋은 카테고리 그룹 ---
+  /* --- 보기 좋은 카테고리 그룹 ---
   final Map<String, List<String>> _groups = {
     "🔥 생명 위급": ['cardiac', 'choking', 'seizure'],
     "🩹 일반 응급": ['bleeding', 'burn', 'fracture', 'dehydration', 'hypoglycemia'],
     "☣ 환경·상황": ['poison', 'heatstroke', 'hypothermia'],
     "🚑 사고/외상": ['traffic', 'animal'],
     "👶 영유아": ['infant'],
-  };
+  };*/
 
   @override
   Widget build(BuildContext context) {
@@ -702,7 +733,7 @@ class _GuideTabState extends State<GuideTab> {
   }
 
   Future<String> _callGemini(String query) async {
-    final apiKey = Secrets.geminiApiKey; // 👈 새로 정의할 값
+    final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
 
     if (apiKey.isEmpty) {
       return 'Gemini API 키가 설정되지 않았습니다.\n'
@@ -711,16 +742,12 @@ class _GuideTabState extends State<GuideTab> {
 
     try {
       final uri = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey',
       );
 
       final response = await http.post(
         uri,
-        headers: {
-          'Content-Type': 'application/json',
-          // 키는 헤더로 전달
-          'x-goog-api-key': apiKey,
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "contents": [
             {
@@ -805,11 +832,7 @@ class _GuideTabState extends State<GuideTab> {
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-<<<<<<< HEAD
             color: Colors.red.shade50,
-=======
-            color: e.bgColor.withValues(alpha: 0.15),
->>>>>>> 0cdc5225d581ee4639677cd95e82f8f286436095
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.red.shade100),
           ),
@@ -951,7 +974,6 @@ class _GuideTabState extends State<GuideTab> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-<<<<<<< HEAD
         color: Colors.red.shade50,
         borderRadius: BorderRadius.circular(16),
       ),
@@ -1019,20 +1041,6 @@ class _GuideTabState extends State<GuideTab> {
           const Text(
             '⚠️ 절단 부위를 물에 직접 넣지 마세요.\n⚠️ 출혈이 심하면 즉시 119에 신고하세요.',
             style: TextStyle(color: Colors.red, fontSize: 12, height: 1.3),
-=======
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4)
-          ]),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: color.withValues(alpha: 0.18),
-            child: Text("${index + 1}",
-                style: TextStyle(color: color, fontWeight: FontWeight.bold)),
->>>>>>> 0cdc5225d581ee4639677cd95e82f8f286436095
           ),
         ],
       ),
