@@ -7,7 +7,8 @@ import 'location_service.dart';
 
 class PublicAEDApiService {
   // 공공데이터포털 API 키 (api_keys.dart에서 관리)
-  static String get serviceKey => '여기다가 키 넣으세요';
+  static String get serviceKey =>
+      '195a040fe3deffc304ac8e3a10c7a72fcf3a2493a4c1e6e27129c15d5f02ec53';
 
   // API 엔드포인트
   static const String baseUrl =

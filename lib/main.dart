@@ -15,7 +15,7 @@ void main() async {
   // 네이버 지도 SDK 초기화 (신규 API - flutter_naver_map 1.4.1+1)
   try {
     await FlutterNaverMap().init(
-      clientId: '여기다가 키 넣으세요', // 네이버 클라우드 플랫폼 Client ID
+      clientId: 's0jlbu865h', // 네이버 클라우드 플랫폼 Client ID
       onAuthFailed: (ex) {
         switch (ex) {
           case NQuotaExceededException(:final message):

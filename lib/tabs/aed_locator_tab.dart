@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import '../services/location_service.dart';
 import '../services/aed_service.dart';
 import '../services/public_aed_api_service.dart';
+import '../services/directions_service.dart';
 
 class AEDLocatorTab extends StatefulWidget {
   const AEDLocatorTab({super.key});
@@ -33,6 +34,12 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
   // 마커 관리용
   final Set<NMarker> _aedMarkers = {};
   NMarker? _myLocationMarker;
+  
+  // 🆕 경로 안내용
+  RouteResult? _currentRoute;
+  NPathOverlay? _routePathOverlay;
+  bool _isCalculatingRoute = false;
+  AEDData? _selectedAED;
 
   @override
   void initState() {

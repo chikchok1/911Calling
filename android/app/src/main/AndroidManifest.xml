@@ -11,7 +11,7 @@
         android:icon="@mipmap/ic_launcher">
         <meta-data
             android:name="com.naver.maps.map.NCP_KEY_ID"
-            android:value="여기다가 키 넣으세요"/>
+            android:value="s0jlbu865h"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
