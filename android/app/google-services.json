@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "804411060064",
+    "project_id": "calling-87cc9",
+    "storage_bucket": "calling-87cc9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:804411060064:android:221083e6c4ad43fa337805",
+        "android_client_info": {
+          "package_name": "com.emergency.guide.projects"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdHL4zhyHAR_NFZMDq8sxp7APVTatDG_w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:804411060064:android:844041c88be8573e337805",
+        "android_client_info": {
+          "package_name": "com.faggteam.calling911"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdHL4zhyHAR_NFZMDq8sxp7APVTatDG_w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
