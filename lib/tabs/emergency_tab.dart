@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import '../models/fire_station.dart';
+import '../services/fire_station_api_service.dart';
 
 class EmergencyTab extends StatefulWidget {
   const EmergencyTab({super.key});
@@ -15,6 +19,10 @@ class _EmergencyTabState extends State<EmergencyTab>
   bool _isRecording = false;
   int _elapsedSeconds = 0;
   Timer? _timer;
+  Position? _currentPosition; // GPS 위치 저장
+  String? _currentAddress; // 현재 주소
+  FireStation? _nearestFireStation; // 가장 가까운 소방서
+  List<FireStation> _allFireStations = []; // API에서 가져온 전체 소방서
 
   // 시나리오 로그를 위한 리스트
   final List<Map<String, dynamic>> _logs = [];
@@ -37,6 +45,25 @@ class _EmergencyTabState extends State<EmergencyTab>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..repeat();
+
+    // 소방서 데이터 미리 로드
+    _loadFireStations();
+  }
+
+  /// 소방서 데이터 로드
+  Future<void> _loadFireStations() async {
+    final stations = await FireStationApiService.fetchAllFireStations();
+    setState(() {
+      _allFireStations = stations;
+    });
+
+    if (stations.isEmpty) {
+      // API 실패 시 하드코딩된 데이터 사용
+      debugPrint('⚠️ API 실패, 하드코딩된 데이터 사용');
+      setState(() {
+        _allFireStations = FireStationData.stations;
+      });
+    }
   }
 
   void _handleEmergencyCall() {
@@ -48,6 +75,9 @@ class _EmergencyTabState extends State<EmergencyTab>
       _elapsedSeconds = 0;
       _logs.clear(); // 로그 초기화
     });
+
+    // 즉시 GPS 위치 가져오기 시작
+    _getCurrentLocation();
 
     // 타이머 시작
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -82,7 +112,7 @@ class _EmergencyTabState extends State<EmergencyTab>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('확인 (시뮬레이션 시작)'),
+            child: const Text('확인'),
           ),
         ],
       ),
@@ -92,14 +122,137 @@ class _EmergencyTabState extends State<EmergencyTab>
   // 시간대별로 가짜 로그를 추가하여 "작동하는 척" 하는 함수
   void _updateScenario(int seconds) {
     if (seconds == 1) _addLog('119 신고 접수 시작', seconds);
-    if (seconds == 3) _addLog('GPS 위치 확보 (37.5665, 126.9780)', seconds);
-    if (seconds == 5) _addLog('관할 소방서(중부소방서) 자동 매칭', seconds);
+    // 3초에는 실제 GPS 데이터와 주소가 로그에 표시됨
+    if (seconds == 3 && _currentPosition != null) {
+      final locationText =
+          _currentAddress ??
+          '${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}';
+      _addLog('GPS 위치 확보 ($locationText)', seconds);
+    } else if (seconds == 3) {
+      _addLog('GPS 위치 확보 중...', seconds);
+    }
+    if (seconds == 5 && _nearestFireStation != null) {
+      _addLog('관할 소방서(${_nearestFireStation!.name}) 자동 매칭', seconds);
+    } else if (seconds == 5) {
+      _addLog('관할 소방서 검색 중...', seconds);
+    }
     if (seconds == 8) _addLog('주변 사용자 5명에게 긴급 알림 전송', seconds);
     if (seconds == 12) _addLog('상황실 음성 송출 채널 연결됨', seconds);
   }
 
   void _addLog(String text, int time) {
     _logs.insert(0, {'text': text, 'time': time}); // 최신 로그가 위로 오게
+  }
+
+  // GPS 위치 가져오기
+  Future<void> _getCurrentLocation() async {
+    try {
+      // 위치 권한 확인
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('❌ GPS 서비스가 비활성화되어 있습니다');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          debugPrint('❌ 위치 권한이 거부되었습니다');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('❌ 위치 권한이 영구적으로 거부되었습니다');
+        return;
+      }
+
+      // 현재 위치 가져오기
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        _currentPosition = position;
+      });
+
+      debugPrint('📍 GPS 위치 확보: ${position.latitude}, ${position.longitude}');
+
+      // 주소 변환
+      _getAddressFromCoordinates(position);
+
+      // GPS 확보 후 가까운 소방서 찾기
+      _findNearestFireStation(position);
+    } catch (e) {
+      debugPrint('❌ GPS 오류: $e');
+    }
+  }
+
+  // GPS 좌표를 주소로 변환
+  Future<void> _getAddressFromCoordinates(Position position) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+
+        // 주소 포맷: "시/도 구/군 동"
+        final address = [
+          place.administrativeArea ?? '', // 시/도 (예: 부산광역시)
+          place.locality ?? place.subAdministrativeArea ?? '', // 구/군 (예: 해운대구)
+          place.subLocality ?? place.thoroughfare ?? '', // 동/길 (예: 우동1동)
+        ].where((s) => s.isNotEmpty).join(' ');
+
+        setState(() {
+          _currentAddress = address;
+        });
+
+        debugPrint('📍 주소 변환 성공: $address');
+      }
+    } catch (e) {
+      debugPrint('❌ 주소 변환 실패: $e');
+      // 주소 변환 실패 시 좌표 사용
+    }
+  }
+
+  // 가장 가까운 소방서 찾기
+  void _findNearestFireStation(Position currentPosition) {
+    if (_allFireStations.isEmpty) {
+      debugPrint('❌ 소방서 데이터가 비어있습니다');
+      return;
+    }
+
+    FireStation? nearest;
+    double minDistance = double.infinity;
+
+    for (final station in _allFireStations) {
+      // 하버사인 공식으로 거리 계산
+      final distance = Geolocator.distanceBetween(
+        currentPosition.latitude,
+        currentPosition.longitude,
+        station.latitude,
+        station.longitude,
+      );
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = station;
+      }
+    }
+
+    setState(() {
+      _nearestFireStation = nearest;
+    });
+
+    if (nearest != null) {
+      debugPrint(
+        '🚒 가장 가까운 소방서: ${nearest.name} (${(minDistance / 1000).toStringAsFixed(1)}km)',
+      );
+    }
   }
 
   void _stopRecording() {
