@@ -125,25 +125,28 @@ class AEDService {
   }
 
   // 현재 위치 주변의 AED 찾기
-  static Future<List<AEDData>> getNearbyAEDs(Position position, {double radiusKm = 5.0}) async {
+  static Future<List<AEDData>> getNearbyAEDs(
+    Position position, {
+    double radiusKm = 5.0,
+  }) async {
     try {
       // 실제로는 API 호출이나 Firebase 쿼리를 해야 함
       // 여기서는 샘플 데이터 사용
       List<AEDData> allAEDs = _getSampleAEDs();
-      
+
       // 반경 내의 AED 필터링
       List<AEDData> nearbyAEDs = allAEDs.where((aed) {
         double distance = aed.getDistanceFrom(position);
         return distance <= radiusKm * 1000; // km를 m로 변환
       }).toList();
-      
+
       // 거리순 정렬
       nearbyAEDs.sort((a, b) {
         double distA = a.getDistanceFrom(position);
         double distB = b.getDistanceFrom(position);
         return distA.compareTo(distB);
       });
-      
+
       return nearbyAEDs;
     } catch (e) {
       print('Error fetching nearby AEDs: $e');
@@ -151,31 +154,9 @@ class AEDService {
     }
   }
 
-  // 공공데이터포털 API 호출 (실제 구현 예시)
-  // static Future<List<AEDData>> fetchAEDsFromAPI(Position position, {double radiusKm = 5.0}) async {
-  //   try {
-  //     final String apiKey = 'YOUR_API_KEY';
-  //     final String url = 'http://apis.data.go.kr/B552657/AEDInfoInqireService/...';
-  //     
-  //     final response = await http.get(Uri.parse(url));
-  //     
-  //     if (response.statusCode == 200) {
-  //       // Parse XML or JSON response
-  //       // Convert to List<AEDData>
-  //       return [];
-  //     }
-  //   } catch (e) {
-  //     print('Error fetching AEDs from API: $e');
-  //   }
-  //   return [];
-  // }
-
   // 랜덤으로 AED 사용 가능 여부 변경 (테스트용)
   static void randomizeAvailability(List<AEDData> aeds) {
     final random = Random();
-    for (var aed in aeds) {
-      // 80% 확률로 사용 가능
-      // aed.available = random.nextDouble() > 0.2;
-    }
+    for (var aed in aeds) {}
   }
 }
