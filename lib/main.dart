@@ -32,22 +32,33 @@ Future<void> main() async {
     print('❌ Firebase 초기화 실패: $e');
   }
 
-  // 📌 네이버 지도 SDK 초기화
+  // 네이버 지도 SDK 초기화 (신규 API - flutter_naver_map 1.4.1+1)
   try {
-    // Client ID가 설정되지 않았을 경우 초기화 건너뛰기
-    if (ApiKeys.naverMapClientId != 's0jlbu865h' &&
-        ApiKeys.naverMapClientId.isNotEmpty) {
-      await NaverMapSdk.instance.initialize(clientId: ApiKeys.naverMapClientId);
-      print('✅ 네이버 지도 SDK 초기화 성공');
-    } else {
-      print('⚠️ 네이버 지도 Client ID가 설정되지 않았습니다.');
-      print('💡 지도 기능을 사용하려면 lib/config/api_keys.dart에서 Client ID를 설정하세요.');
-    }
+    await FlutterNaverMap().init(
+      clientId: 's0jlbu865h', // 네이버 클라우드 플랫폼 Client ID
+      onAuthFailed: (ex) {
+        switch (ex) {
+          case NQuotaExceededException(:final message):
+            print('❌ 사용량 초과: $message');
+            break;
+          case NUnauthorizedClientException() ||
+              NClientUnspecifiedException() ||
+              NAnotherAuthFailedException():
+            print('❌ 인증 실패: $ex');
+            print('💡 네이버 클라우드 플랫폼 콘솔에서 확인 필요:');
+            print('   2. Dynamic Map 서비스가 선택되어 있는지');
+            print('   3. Android 패키지: com.emergency.guide.projects 가 등록되어 있는지');
+            print(
+              '   4. Debug 패키지: com.emergency.guide.projects.debug 도 등록했는지',
+            );
+            break;
+        }
+      },
+    );
+    print('✅ 네이버 지도 SDK 초기화 성공 (flutter_naver_map 1.4.1+1)');
   } catch (e) {
     print('❌ 네이버 지도 SDK 초기화 실패: $e');
-    print('💡 lib/config/api_keys.dart 파일에 올바른 Client ID를 입력했는지 확인하세요!');
   }
-
   runApp(const EmergencyResponseApp());
 }
 

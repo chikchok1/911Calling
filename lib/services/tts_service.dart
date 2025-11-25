@@ -17,7 +17,7 @@ class TTSService {
     try {
       await _flutterTts.setLanguage("ko-KR");
       await _flutterTts.setPitch(1.0);
-      await _flutterTts.setSpeechRate(0.5);
+      await _flutterTts.setSpeechRate(0.55);
 
       _flutterTts.setCompletionHandler(() {
         _isSpeaking = false;
