@@ -52,19 +52,32 @@ app.*.map.json
 .env
 .env.local
 .env.*.local
-lib/config/api_keys.dart
 lib/config/secrets.dart
-
-# Firebase 설정 파일 (민감한 정보 포함)
-# 팀 프로젝트라면 주석 해제를 고려하세요
-ios/Runner/GoogleService-Info.plist
-android/app/google-services.json
-lib/firebase_options.dart
 
 # 로컬 키 파일
 local.properties
 key.properties
 android/key.properties
+
+# ============================================
+# 🔥 Firebase 환경 설정 파일 (절대 업로드 금지!)
+# ============================================
+
+# Android Firebase
+android/app/google-services.json
+android/app/src/debug/google-services.json
+android/app/src/release/google-services.json
+
+# iOS Firebase
+ios/Runner/GoogleService-Info.plist
+ios/firebase_app_id_file.json
+
+# Flutter Firebase 자동 생성 파일
+lib/firebase_options.dart
+
+# Firebase 설정 백업 파일들
+*.json.bak
+*GoogleService*.plist.bak
 
 # ============================================
 # OS Specific
@@ -111,6 +124,18 @@ captures/
 /*.gcno
 **/xcshareddata/WorkspaceSettings.xcsettings
 
+# Xcode 개인 설정 파일�들
+*.xcuserstate
+*.xcuserdatad
+xcuserdata/
+UserInterfaceState.xcuserstate
+project.xcworkspace/xcuserdata/
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+
 # ============================================
 # Flutter Generated Files
 # ============================================
@@ -136,6 +161,23 @@ android/gradlew.bat
 android/local.properties
 android/app/output/
 android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
+# Android 환경 설정 파일들
+android/.idea/
+android/build/
+android/app/build/
+android/.gradle/
+android/gradle.properties
+android/app/release/
+android/app/debug/
+android/app/profile/
+
+# Android 서명 키 파일들 (절대 업로드 금지!)
+*.jks
+*.keystore
+upload-keystore.jks
+android/app/*.jks
+android/app/*.keystore
 
 # Web
 web/favicon.png
@@ -187,6 +229,38 @@ NOTES.md
 TODO.md
 PRIVATE.md
 SECRETS.md
+
+# ============================================
+# 환경 설정 JSON 파일들
+# ============================================
+
+# 프로젝트 환경 설정
+config.json
+config.*.json
+app-config.json
+environment.json
+settings.json
+settings.*.json
+
+# 개발 환경 설정
+.vscode/settings.json
+.vscode/launch.json
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/shelf
+
+# Firebase 관련 환경 설정
+.firebaserc
+firebase.json
+firebaserc.json
+.firebase/
+
+# Flutter 환경 설정
+.metadata
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
 
 # ============================================
 # Logs

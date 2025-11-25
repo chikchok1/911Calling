@@ -4,11 +4,10 @@ import 'package:xml/xml.dart' as xml;
 import 'package:geolocator/geolocator.dart';
 import 'aed_service.dart';
 import 'location_service.dart';
-import '../config/api_keys.dart'; // ← API 키 import
 
 class PublicAEDApiService {
   // 공공데이터포털 API 키 (api_keys.dart에서 관리)
-  static String get serviceKey => ApiKeys.publicDataApiKey;
+  static String get serviceKey => '여기다가 키 넣으세요';
 
   // API 엔드포인트
   static const String baseUrl =

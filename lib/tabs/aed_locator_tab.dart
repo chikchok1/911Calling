@@ -24,11 +24,12 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
   String _currentRegion = '서울특별시';
   NLatLng? _mapCenter;
   double _currentZoom = 15.0;
-  
+  bool _isMapFullScreen = false; // 지도 전체화면 모드
+
   // 실시간 위치 추적용
   StreamSubscription<Position>? _positionStreamSubscription;
   bool _isTrackingLocation = true; // 기본적으로 추적 활성화
-  
+
   // 마커 관리용
   final Set<NMarker> _aedMarkers = {};
   NMarker? _myLocationMarker;
@@ -54,9 +55,9 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
 
     try {
       print('=== 위치 권한 요청 시작 ===');
-      
+
       final position = await LocationService.getCurrentLocation();
-      
+
       if (position == null) {
         setState(() {
           _errorMessage = '위치 권한이 필요합니다.\n설정에서 위치 권한을 허용해주세요.';
@@ -75,7 +76,6 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
 
       // 실시간 위치 추적 시작
       _startLocationTracking();
-
     } catch (e) {
       print('❌ 위치 초기화 오류: $e');
       setState(() {
@@ -88,35 +88,34 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
   /// 실시간 위치 추적 시작
   void _startLocationTracking() {
     print('🎯 실시간 위치 추적 시작');
-    
+
     const locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: 10, // 10미터 이동 시마다 업데이트
     );
 
-    _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).listen(
-      (Position position) {
-        print('📍 위치 업데이트: ${position.latitude}, ${position.longitude}');
-        
-        setState(() {
-          _currentPosition = position;
-          _mapCenter = NLatLng(position.latitude, position.longitude);
-        });
+    _positionStreamSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+          (Position position) {
+            print('📍 위치 업데이트: ${position.latitude}, ${position.longitude}');
 
-        // 추적 모드일 때만 카메라 이동
-        if (_isTrackingLocation && _mapController != null) {
-          _moveCameraToPosition(position, animate: true);
-        }
+            setState(() {
+              _currentPosition = position;
+              _mapCenter = NLatLng(position.latitude, position.longitude);
+            });
 
-        // 내 위치 마커 업데이트
-        _updateMyLocationMarker();
-      },
-      onError: (error) {
-        print('❌ 위치 스트림 오류: $error');
-      },
-    );
+            // 추적 모드일 때만 카메라 이동
+            if (_isTrackingLocation && _mapController != null) {
+              _moveCameraToPosition(position, animate: true);
+            }
+
+            // 내 위치 마커 업데이트
+            _updateMyLocationMarker();
+          },
+          onError: (error) {
+            print('❌ 위치 스트림 오류: $error');
+          },
+        );
 
     setState(() {
       _isTrackingLocation = true;
@@ -128,7 +127,7 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
     setState(() {
       _isTrackingLocation = !_isTrackingLocation;
     });
-    
+
     if (_isTrackingLocation && _currentPosition != null) {
       // 추적 재개 시 현재 위치로 이동
       _moveCameraToPosition(_currentPosition!, animate: true);
@@ -138,37 +137,39 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
   /// 현재 위치로 카메라 이동 (API 업데이트됨)
   Future<void> moveToCurrentLocation() async {
     if (_mapController == null) return;
-    
+
     final position = await LocationService.getCurrentLocation();
     if (position == null) return;
-    
+
     setState(() {
       _currentPosition = position;
       _mapCenter = NLatLng(position.latitude, position.longitude);
       _isTrackingLocation = true; // 추적 모드 활성화
     });
-    
+
     await _moveCameraToPosition(position, animate: true);
     await _loadAEDsForCurrentLocation();
   }
 
   /// 위치로 카메라 이동 (새 API 사용)
-  Future<void> _moveCameraToPosition(Position position, {bool animate = false}) async {
+  Future<void> _moveCameraToPosition(
+    Position position, {
+    bool animate = false,
+  }) async {
     if (_mapController == null) return;
-    
+
     final cameraUpdate = NCameraUpdate.withParams(
       target: NLatLng(position.latitude, position.longitude),
       zoom: _currentZoom,
     );
-    
+
     if (animate) {
       cameraUpdate.setAnimation(
-      animation: NCameraAnimation.easing,
-      duration: const Duration(milliseconds: 500),
-  );
-}
+        animation: NCameraAnimation.easing,
+        duration: const Duration(milliseconds: 500),
+      );
+    }
 
-    
     await _mapController!.updateCamera(cameraUpdate);
   }
 
@@ -194,19 +195,8 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
             color: Colors.blue,
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 3),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.withOpacity(0.5),
-                blurRadius: 8,
-                spreadRadius: 2,
-              ),
-            ],
           ),
-          child: const Icon(
-            Icons.navigation,
-            color: Colors.white,
-            size: 16,
-          ),
+          child: const Icon(Icons.navigation, color: Colors.white, size: 16),
         ),
         size: const Size(30, 30),
         context: context,
@@ -217,7 +207,6 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
 
       // 모든 마커 다시 추가 (내 위치 + AED)
       await _refreshAllMarkers();
-      
     } catch (e) {
       print('❌ 마커 업데이트 오류: $e');
     }
@@ -234,7 +223,7 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
     try {
       print('\n=== AED 데이터 로딩 시작 ===');
       print('지도 중심: ${_mapCenter!.latitude}, ${_mapCenter!.longitude}');
-      
+
       final tempPosition = Position(
         latitude: _mapCenter!.latitude,
         longitude: _mapCenter!.longitude,
@@ -247,9 +236,9 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
         speed: 0,
         speedAccuracy: 0,
       );
-      
+
       List<AEDData> aeds = [];
-      
+
       if (_usePublicAPI) {
         print('📡 공공 API 호출 중... (지역: $_currentRegion)');
         aeds = await PublicAEDApiService.searchAEDsByRegion(
@@ -269,7 +258,6 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
       });
 
       await _updateAEDMarkers();
-      
     } catch (e) {
       print('❌ AED 로딩 오류: $e');
       setState(() {
@@ -287,11 +275,11 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
     try {
       // 새로운 AED 마커 생성
       _aedMarkers.clear();
-      
+
       print('⚡ AED 마커 ${_nearbyAEDs.length}개 생성 중...');
       for (int i = 0; i < _nearbyAEDs.length && i < 100; i++) {
         final aed = _nearbyAEDs[i];
-        
+
         final marker = NMarker(
           id: 'aed_${aed.id}',
           position: NLatLng(aed.latitude, aed.longitude),
@@ -313,16 +301,12 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.bolt,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: const Icon(Icons.bolt, color: Colors.white, size: 20),
           ),
           size: const Size(36, 36),
           context: context,
         );
-        
+
         marker.setIcon(icon);
         marker.setOnTapListener((overlay) {
           _showAEDInfo(aed);
@@ -333,7 +317,6 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
 
       await _refreshAllMarkers();
       print('✅ AED 마커 업데이트 완료!');
-      
     } catch (e) {
       print('❌ AED 마커 업데이트 오류: $e');
     }
@@ -346,23 +329,22 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
     try {
       // 기존 마커 모두 제거
       await _mapController!.clearOverlays(type: NOverlayType.marker);
-      
+
       // 새 마커 세트 생성
       final allMarkers = <NMarker>{};
-      
+
       // 내 위치 마커 추가
       if (_myLocationMarker != null) {
         allMarkers.add(_myLocationMarker!);
       }
-      
+
       // AED 마커 추가
       allMarkers.addAll(_aedMarkers);
-      
+
       // 모든 마커 한 번에 추가
       if (allMarkers.isNotEmpty) {
         await _mapController!.addOverlayAll(allMarkers);
       }
-      
     } catch (e) {
       print('❌ 마커 새로고침 오류: $e');
     }
@@ -377,10 +359,10 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
     if (_currentPosition != null) {
       await _moveCameraToPosition(_currentPosition!, animate: false);
     }
-    
+
     // 초기 AED 데이터 로드
     await _loadAEDsForCurrentLocation();
-    
+
     // 내 위치 마커 추가
     await _updateMyLocationMarker();
   }
@@ -388,13 +370,15 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
   /// 지도 중심 업데이트
   Future<void> _updateMapCenter() async {
     if (_mapController == null) return;
-    
+
     final cameraPosition = await _mapController!.getCameraPosition();
     setState(() {
       _mapCenter = cameraPosition.target;
       _currentZoom = cameraPosition.zoom;
     });
-    print('📍 지도 중심: ${_mapCenter!.latitude}, ${_mapCenter!.longitude}, zoom: $_currentZoom');
+    print(
+      '📍 지도 중심: ${_mapCenter!.latitude}, ${_mapCenter!.longitude}, zoom: $_currentZoom',
+    );
   }
 
   /// AED 상세 정보 표시
@@ -407,101 +391,111 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.amber[600],
-                    shape: BoxShape.circle,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 20,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber[600],
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.bolt,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
-                  child: const Icon(Icons.bolt, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        aed.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          '사용 가능',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          aed.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            '사용 가능',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              _buildInfoRow(Icons.location_on, '주소', aed.address),
+              if (aed.institution != null)
+                _buildInfoRow(Icons.business, '관리기관', aed.institution!),
+              if (aed.phone != null)
+                _buildInfoRow(Icons.phone, '연락처', aed.phone!),
+              _buildInfoRow(Icons.navigation, '거리', distanceStr),
+              _buildInfoRow(Icons.access_time, '도보', walkingTime),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _navigateToAED(aed);
+                      },
+                      icon: const Icon(Icons.directions),
+                      label: const Text('길찾기'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            _buildInfoRow(Icons.location_on, '주소', aed.address),
-            if (aed.institution != null)
-              _buildInfoRow(Icons.business, '관리기관', aed.institution!),
-            if (aed.phone != null)
-              _buildInfoRow(Icons.phone, '연락처', aed.phone!),
-            _buildInfoRow(Icons.navigation, '거리', distanceStr),
-            _buildInfoRow(Icons.access_time, '도보', walkingTime),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _navigateToAED(aed);
-                    },
-                    icon: const Icon(Icons.directions),
-                    label: const Text('길찾기'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.share),
-                    label: const Text('공유'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber[700],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.share),
+                      label: const Text('공유'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber[700],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -523,9 +517,7 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 14)),
-          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );
@@ -534,19 +526,19 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
   /// AED로 네비게이션 (새 API 사용)
   void _navigateToAED(AEDData aed) async {
     if (_mapController == null) return;
-    
+
     final cameraUpdate = NCameraUpdate.scrollAndZoomTo(
       target: NLatLng(aed.latitude, aed.longitude),
       zoom: 17,
     );
-    
+
     cameraUpdate.setAnimation(
       animation: NCameraAnimation.easing,
       duration: const Duration(milliseconds: 800),
-);
-    
+    );
+
     await _mapController!.updateCamera(cameraUpdate);
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${aed.name}로 이동합니다'),
@@ -604,8 +596,8 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
               ),
             )
           : _errorMessage != null
-              ? _buildErrorWidget()
-              : _buildMapWithList(),
+          ? _buildErrorWidget()
+          : _buildMapWithList(),
     );
   }
 
@@ -644,6 +636,189 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
   }
 
   Widget _buildMapWithList() {
+    // 전체화면 모드
+    if (_isMapFullScreen) {
+      return Stack(
+        children: [
+          // 전체 지도
+          _mapCenter == null
+              ? const Center(child: CircularProgressIndicator())
+              : Stack(
+                  children: [
+                    NaverMap(
+                      options: NaverMapViewOptions(
+                        initialCameraPosition: NCameraPosition(
+                          target: _mapCenter!,
+                          zoom: _currentZoom,
+                        ),
+                        locationButtonEnable: false,
+                        mapType: NMapType.basic,
+                        activeLayerGroups: [
+                          NLayerGroup.building,
+                          NLayerGroup.transit,
+                        ],
+                      ),
+                      onMapReady: _onMapReady,
+                    ),
+
+                    // 닫기 버튼
+                    Positioned(
+                      top: 48,
+                      left: 12,
+                      child: _buildMapIconButton(
+                        icon: Icons.close_fullscreen,
+                        onPressed: () {
+                          setState(() {
+                            _isMapFullScreen = false;
+                          });
+                        },
+                        color: Colors.red,
+                      ),
+                    ),
+
+                    // 기존 컨트롤 버튼들
+                    Positioned(
+                      top: 48,
+                      right: 12,
+                      child: Column(
+                        children: [
+                          _buildMapIconButton(
+                            icon: _isTrackingLocation
+                                ? Icons.gps_fixed
+                                : Icons.gps_not_fixed,
+                            onPressed: _toggleLocationTracking,
+                            color: _isTrackingLocation ? Colors.blue : null,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildMapIconButton(
+                            icon: Icons.my_location,
+                            onPressed: moveToCurrentLocation,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildMapIconButton(
+                            icon: Icons.add,
+                            onPressed: () async {
+                              if (_mapController == null) return;
+                              final pos = await _mapController!
+                                  .getCameraPosition();
+                              final update = NCameraUpdate.withParams(
+                                zoom: pos.zoom + 1,
+                              );
+                              await _mapController!.updateCamera(update);
+                              setState(() {
+                                _currentZoom = pos.zoom + 1;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          _buildMapIconButton(
+                            icon: Icons.remove,
+                            onPressed: () async {
+                              if (_mapController == null) return;
+                              final pos = await _mapController!
+                                  .getCameraPosition();
+                              final update = NCameraUpdate.withParams(
+                                zoom: pos.zoom - 1,
+                              );
+                              await _mapController!.updateCamera(update);
+                              setState(() {
+                                _currentZoom = pos.zoom - 1;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    if (_isTrackingLocation)
+                      Positioned(
+                        top: 104,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.radio_button_checked,
+                                color: Colors.white,
+                                size: 12,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                '실시간 추적 중',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    if (_isLoadingAEDs)
+                      Positioned(
+                        bottom: 20,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'AED 검색 중...',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+        ],
+      );
+    }
+
+    // 기본 모드
     return Column(
       children: [
         // 헤더
@@ -732,7 +907,7 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
                       ),
                       onMapReady: _onMapReady,
                     ),
-                    
+
                     // 지역 선택
                     Positioned(
                       top: 12,
@@ -756,7 +931,7 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
                         ),
                       ),
                     ),
-                    
+
                     // 컨트롤 버튼
                     Positioned(
                       top: 12,
@@ -783,7 +958,8 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
                             icon: Icons.add,
                             onPressed: () async {
                               if (_mapController == null) return;
-                              final pos = await _mapController!.getCameraPosition();
+                              final pos = await _mapController!
+                                  .getCameraPosition();
                               final update = NCameraUpdate.withParams(
                                 zoom: pos.zoom + 1,
                               );
@@ -799,7 +975,8 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
                             icon: Icons.remove,
                             onPressed: () async {
                               if (_mapController == null) return;
-                              final pos = await _mapController!.getCameraPosition();
+                              final pos = await _mapController!
+                                  .getCameraPosition();
                               final update = NCameraUpdate.withParams(
                                 zoom: pos.zoom - 1,
                               );
@@ -809,10 +986,21 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
                               });
                             },
                           ),
+                          const SizedBox(height: 8),
+                          // 전체화면
+                          _buildMapIconButton(
+                            icon: Icons.fullscreen,
+                            onPressed: () {
+                              setState(() {
+                                _isMapFullScreen = true;
+                              });
+                            },
+                            color: Colors.green,
+                          ),
                         ],
                       ),
                     ),
-                    
+
                     // 추적 상태
                     if (_isTrackingLocation)
                       Positioned(
@@ -854,17 +1042,15 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
                           ),
                         ),
                       ),
-                    
+
                     // 이 지역 검색
                     Positioned(
                       bottom: 12,
                       left: 0,
                       right: 0,
-                      child: Center(
-                        child: _buildSearchButton(),
-                      ),
+                      child: Center(child: _buildSearchButton()),
                     ),
-                    
+
                     // 로딩
                     if (_isLoadingAEDs)
                       Positioned(
@@ -942,12 +1128,10 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
           ),
         ),
 
-        // AED 목록
+        // AED 목록 (높이 증가 & 스크롤 가능)
         Expanded(
-          flex: 2,
-          child: _nearbyAEDs.isEmpty
-              ? _buildEmptyState()
-              : _buildAEDList(),
+          flex: 3,
+          child: _nearbyAEDs.isEmpty ? _buildEmptyState() : _buildAEDList(),
         ),
       ],
     );
@@ -963,10 +1147,7 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 4,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4),
         ],
       ),
       child: Material(
@@ -995,10 +1176,7 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
         color: color ?? Colors.white,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 4,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4),
         ],
       ),
       child: Material(
@@ -1183,18 +1361,32 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.navigation, size: 12, color: Colors.grey[600]),
+                            Icon(
+                              Icons.navigation,
+                              size: 12,
+                              color: Colors.grey[600],
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               distanceStr,
-                              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                              ),
                             ),
                             const SizedBox(width: 12),
-                            Icon(Icons.access_time, size: 12, color: Colors.grey[600]),
+                            Icon(
+                              Icons.access_time,
+                              size: 12,
+                              color: Colors.grey[600],
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               '도보 $walkingTime',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                              ),
                             ),
                           ],
                         ),
@@ -1235,14 +1427,10 @@ class _AEDLocatorTabState extends State<AEDLocatorTab> {
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('주변 사용자에게 AED 요청을 전송했습니다'),
-                ),
+                const SnackBar(content: Text('주변 사용자에게 AED 요청을 전송했습니다')),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber[700],
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[700]),
             child: const Text('요청'),
           ),
         ],

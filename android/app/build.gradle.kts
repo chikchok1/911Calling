@@ -27,7 +27,7 @@ android {
         applicationId = "com.emergency.guide.projects"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = flutter.minSdkVersion  // flutter_naver_map 요구사항: Android 6.0 (SDK 23)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
