@@ -31,6 +31,10 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        ndk {
+        abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+    }
     }
 
     buildTypes {
@@ -44,4 +48,17 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Fix Flutter APK output path
+afterEvaluate {
+    tasks.register("copyApk", Copy::class) {
+        from("build/outputs/apk/debug")
+        into("../../build/app/outputs/flutter-apk")
+        include("*.apk")
+    }
+    
+    tasks.named("assembleDebug") {
+        finalizedBy("copyApk")
+    }
 }
