@@ -93,7 +93,6 @@ flutter run
 - [API_KEYS_GUIDE.md](./API_KEYS_GUIDE.md) - API 키 발급 방법
 - [AED_SETUP_GUIDE.md](./AED_SETUP_GUIDE.md) - AED 기능 설정
 - [NAVER_MAP_FIX.md](./NAVER_MAP_FIX.md) - 네이버 맵 이슈 해결
-- [QUICKSTART.md](./QUICKSTART.md) - 빠른 시작 가이드
 
 ---
 
