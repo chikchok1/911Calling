@@ -164,3 +164,15 @@ yarn-error.log*
 # Assets
 # ============================================
 assets/audio/*.mp4
+.flutter-plugins-dependencies*
+pubspec.lock
+
+# Flutter auto-generated (avoid team conflicts)
+.metadata
+
+# Android extra
+android/.idea/
+android/app/.cxx/
+
+# iOS extra
+ios/.generated/
