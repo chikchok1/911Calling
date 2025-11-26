@@ -5,7 +5,8 @@ import '../models/fire_station.dart';
 
 /// 소방서 공공데이터 API 서비스
 class FireStationApiService {
-  static const String baseUrl = 'https://api.odcloud.kr/api/15048243/v1';
+  // 소방서 좌표 데이터 API (위도/경도 포함)
+  static const String baseUrl = 'https://api.odcloud.kr/api/15138232/v1';
 
   /// 전체 소방서 목록 가져오기
   static Future<List<FireStation>> fetchAllFireStations() async {
@@ -17,11 +18,9 @@ class FireStationApiService {
     }
 
     try {
-      // 여러 데이터셋을 가져와야 할 수 있음 (날짜별로 구분되어 있음)
+      // 소방서 좌표 현황 데이터 (위도/경도 포함)
       final datasets = [
-        'uddi:818f12a7-70c1-4aff-81a0-80d5db5be9fb', // 2020년 데이터
-        'uddi:a7630967-737e-4f06-84bc-f3e7b131f4a9', // 2024년 데이터
-        'uddi:c6523118-231e-42ad-81a6-d771e4f8e374', // 2025년 데이터
+        'uddi:da0c6c93-f05a-453d-849f-e4c3697222e3', // 2024년 9월 데이터
       ];
 
       List<FireStation> allStations = [];
@@ -58,39 +57,59 @@ class FireStationApiService {
       );
 
       print('🔍 소방서 API 호출 중: $dataset');
+      print('🔗 URL: ${url.toString()}');
 
       final response = await http.get(url).timeout(const Duration(seconds: 10));
+
+      print('📡 API 응답 상태: ${response.statusCode}');
+      print('📝 응답 본문 길이: ${response.bodyBytes.length} bytes');
 
       if (response.statusCode == 200) {
         final decodedBody = utf8.decode(response.bodyBytes);
         final Map<String, dynamic> jsonData = json.decode(decodedBody);
 
+        print('📊 응답 구조 키: ${jsonData.keys.toList()}');
+
         final List<dynamic> data = jsonData['data'] ?? [];
+
+        print('✅ ${data.length}개의 소방서 데이터 발견');
 
         if (data.isEmpty) {
           print('⚠️ 데이터가 비어있음');
           return [];
         }
 
+        print('📋 데이터 필드명: ${data[0].keys.toList()}');
+
+        // 첫 번째 항목의 전체 데이터 출력 (디버깅용)
+        if (data.isNotEmpty) {
+          print('🔍 첫 번째 데이터 전체:');
+          data[0].forEach((key, value) {
+            print('  "$key": $value (타입: ${value.runtimeType})');
+          });
+        }
+
         final List<FireStation> stations = [];
 
         for (final item in data) {
           try {
-            // 필드명이 다를 수 있으므로 여러 경우를 체크
-            final name = item['소방서명'] ?? item['기관명'] ?? item['name'] ?? '';
+            // 소방서 좌표 데이터의 필드명
+            final name =
+                item['소방서 및 안전센터명'] ??
+                item['소방서명'] ??
+                item['소방서'] ??
+                item['기관명'] ??
+                '';
+            final address = item['주소'] ?? item['소재지'] ?? '';
+            final phone = item['전화번호'] ?? item['대표전화'] ?? '';
 
-            final address =
-                item['소재지도로명주소'] ?? item['주소'] ?? item['address'] ?? '';
-
+            // 위도/경도 - 공공데이터는 X좌표=위도, Y좌표=경도
             final lat = _parseDouble(
-              item['위도'] ?? item['latitude'] ?? item['lat'],
+              item['X좌표'] ?? item['위도'] ?? item['latitude'],
             );
-
             final lng = _parseDouble(
-              item['경도'] ?? item['longitude'] ?? item['lng'],
+              item['Y좌표'] ?? item['경도'] ?? item['longitude'],
             );
-
-            final phone = item['전화번호'] ?? item['대표전화'] ?? item['phone'] ?? '';
 
             // 위도/경도가 유효한 데이터만 추가
             if (name.isNotEmpty && lat != 0.0 && lng != 0.0) {
@@ -103,6 +122,8 @@ class FireStationApiService {
                   phone: phone,
                 ),
               );
+            } else {
+              print('! 유효하지 않은 데이터: name=$name, lat=$lat, lng=$lng');
             }
           } catch (e) {
             // 개별 항목 파싱 실패는 무시하고 계속
@@ -110,6 +131,7 @@ class FireStationApiService {
           }
         }
 
+        print('✅ 최종적으로 ${stations.length}개의 소방서 데이터 파싱 완료');
         return stations;
       } else {
         print('❌ API 응답 오류: ${response.statusCode}');
