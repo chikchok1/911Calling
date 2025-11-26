@@ -1,3 +1,51 @@
+# name: projects
+# description: "A new Flutter project."
+# publish_to: "none"
+
+# version: 1.0.0+1
+
+# environment:
+#   sdk: ">=3.10.0 <4.0.0"
+
+# dependencies:
+#   flutter:
+#     sdk: flutter
+#   just_audio: ^0.10.5
+#   video_player: ^2.8.2
+
+#   cupertino_icons: ^1.0.8
+#   flutter_dotenv: ^6.0.0
+#   url_launcher: ^6.3.0
+
+#   # ✅ Firebase 최신 규칙에 맞는 조합
+#   firebase_core: ^4.2.1
+#   cloud_firestore: ^6.1.0
+
+#   google_maps_flutter: ^2.5.0
+#   flutter_naver_map: ^1.4.1+1
+#   geolocator: ^14.0.2
+#   geocoding: ^3.0.0
+#   http: ^1.2.2
+#   xml: ^6.5.0
+
+#   flutter_tts: ^4.2.3
+#   speech_to_text: ^7.3.0
+#   permission_handler: ^12.0.1
+
+# dev_dependencies:
+#   flutter_test:
+#     sdk: flutter
+#   flutter_lints: ^6.0.0
+
+# flutter:
+#   uses-material-design: true
+
+#   assets:
+#     - assets/sound/
+#     - assets/audio/
+#     - assets/image/
+#     - .env
+
 name: projects
 description: "A new Flutter project."
 publish_to: "none"
@@ -10,27 +58,44 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  just_audio: ^0.10.5
-  video_player: ^2.8.2
 
+  # UI
   cupertino_icons: ^1.0.8
-  flutter_dotenv: ^6.0.0
-  url_launcher: ^6.3.0
 
-  # ✅ Firebase 최신 규칙에 맞는 조합
+  # --- Firebase (안정 조합) ---
   firebase_core: ^4.2.1
   cloud_firestore: ^6.1.0
+  # firebase_auth 필요하면 아래 주석 해제
+  firebase_auth: ^6.1.2
 
+  # --- Maps ---
   google_maps_flutter: ^2.5.0
   flutter_naver_map: ^1.4.1+1
-  geolocator: ^14.0.2
-  geocoding: ^4.0.0
+
+  # --- 위치 정보 + 주소 변환 ---
+  geolocator: ^14.0.2 # 최신 but 안정 버전
+  geocoding: ^3.0.0
+
+  # --- 권한 관리 (Android 최신 권고 버전) ---
+  permission_handler: ^12.0.1
+
+  # --- HTTP & XML ---
   http: ^1.2.2
   xml: ^6.5.0
 
-  flutter_tts: ^4.2.3
-  speech_to_text: ^7.3.0
-  permission_handler: ^12.0.1
+  # --- 음성 기능 ---
+  speech_to_text: ^7.3.0 # STT
+  flutter_tts: ^4.2.3 # TTS
+
+  # --- 오디오 / 비디오 ---
+  just_audio: ^0.10.5
+  video_player: ^2.8.2
+
+  # --- 환경 변수 (.env) ---
+  flutter_dotenv: ^6.0.0
+
+  # URL Launcher
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
