@@ -117,6 +117,12 @@ class _EmergencyTabState extends State<EmergencyTab>
         ],
       ),
     );
+    // ✅ 1초 후 자동으로 팝업 닫기
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    });
   }
 
   // 시간대별로 가짜 로그를 추가하여 "작동하는 척" 하는 함수
@@ -144,7 +150,7 @@ class _EmergencyTabState extends State<EmergencyTab>
     _logs.insert(0, {'text': text, 'time': time}); // 최신 로그가 위로 오게
   }
 
-  // GPS 위치 가져오기
+  // GPS 위치 가져오기 (개선된 버전)
   Future<void> _getCurrentLocation() async {
     try {
       // 위치 권한 확인
@@ -168,24 +174,55 @@ class _EmergencyTabState extends State<EmergencyTab>
         return;
       }
 
-      // 현재 위치 가져오기
+      // ✅ 1단계: 마지막 알려진 위치 먼저 사용 (빠른 응답)
+      Position? lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        setState(() {
+          _currentPosition = lastKnown;
+        });
+        debugPrint(
+          '📍 캐시된 위치 사용: ${lastKnown.latitude}, ${lastKnown.longitude}',
+        );
+        _getAddressFromCoordinates(lastKnown);
+        _findNearestFireStation(lastKnown);
+      }
+
+      // ✅ 2단계: 현재 위치 정확하게 가져오기 (백그라운드에서 업데이트)
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 5), // 5초 제한
       );
 
       setState(() {
         _currentPosition = position;
       });
 
-      debugPrint('📍 GPS 위치 확보: ${position.latitude}, ${position.longitude}');
+      debugPrint('📍 GPS 위치 업데이트: ${position.latitude}, ${position.longitude}');
 
       // 주소 변환
       _getAddressFromCoordinates(position);
 
-      // GPS 확보 후 가까운 소방서 찾기
+      // GPS 확보 후 가까운 소방서 다시 찾기
       _findNearestFireStation(position);
     } catch (e) {
       debugPrint('❌ GPS 오류: $e');
+
+      // ✅ GPS 실패 시에도 마지막 위치라도 사용
+      try {
+        Position? lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null && _currentPosition == null) {
+          setState(() {
+            _currentPosition = lastKnown;
+          });
+          debugPrint(
+            '⚠️ GPS 실패, 마지막 위치 사용: ${lastKnown.latitude}, ${lastKnown.longitude}',
+          );
+          _getAddressFromCoordinates(lastKnown);
+          _findNearestFireStation(lastKnown);
+        }
+      } catch (e2) {
+        debugPrint('❌ 마지막 위치도 없음: $e2');
+      }
     }
   }
 
