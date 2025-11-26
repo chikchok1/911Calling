@@ -4,11 +4,11 @@ import 'package:xml/xml.dart' as xml;
 import 'package:geolocator/geolocator.dart';
 import 'aed_service.dart';
 import 'location_service.dart';
+import '../config/api_keys.dart';
 
 class PublicAEDApiService {
-  // 공공데이터포털 API 키 (api_keys.dart에서 관리)
-  static String get serviceKey =>
-      '195a040fe3deffc304ac8e3a10c7a72fcf3a2493a4c1e6e27129c15d5f02ec53';
+  // 공공데이터포털 API 키 (.env에서 로드)
+  static String get serviceKey => ApiKeys.aedApiKey;
 
   // API 엔드포인트
   static const String baseUrl =
@@ -28,7 +28,7 @@ class PublicAEDApiService {
     try {
       // API URL 구성
       final queryParams = {
-        'serviceKey': Uri.decodeComponent(serviceKey), // 디코딩된 키 사용
+        'serviceKey': serviceKey,
         'pageNo': pageNo.toString(),
         'numOfRows': numOfRows.toString(),
       };
@@ -45,15 +45,12 @@ class PublicAEDApiService {
       ).replace(queryParameters: queryParams);
 
       print('📡 Fetching AED data from public API...');
-      print('Request URL: $uri');
 
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
-        // UTF-8로 디코딩 (한글 깨짐 방지)
-        final responseBody = utf8.decode(response.bodyBytes);
-
-        print('✅ Response received, parsing XML...');
+        // XML 파싱
+        final responseBody = utf8.decode(response.bodyBytes); // ✅ UTF-8로 디코딩
 
         // XML 파싱
         final document = xml.XmlDocument.parse(responseBody);
