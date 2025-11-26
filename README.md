@@ -269,11 +269,6 @@ MIT License - 자세한 내용은 [LICENSE](LICENSE) 참조
 
 ---
 
-## 📞 지원
-
-- **Issues**: [GitHub Issues](https://github.com/chikchok1/911-calling-app/issues)
-- **Email**: your.email@example.com
-
 ---
 
 <div align="center">
@@ -287,7 +282,5 @@ MIT License - 자세한 내용은 [LICENSE](LICENSE) 참조
 **실제 응급 상황에서는 반드시 119에 신고하고 전문가의 지시를 따르세요.**
 
 ---
-
-Made with ❤️ by chikchok1, Diongjin, JunHwaKang
 
 </div>
