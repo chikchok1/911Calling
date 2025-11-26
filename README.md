@@ -144,6 +144,85 @@ flutter test --coverage      # 커버리지 생성
 
 ---
 
+## 📲 APK 배포 (ADB 사용)
+
+개발자가 아닌 사용자에게 APK를 설치하려면 ADB(Android Debug Bridge)를 사용할 수 있습니다.
+
+### 📌 1) ADB 설치 (Windows)
+
+**방법 1: Android SDK Platform Tools 다운로드**
+```bash
+# 1. 다운로드
+https://developer.android.com/studio/releases/platform-tools
+
+# 2. 압축 해제 후 환경 변수 등록
+# 시스템 속성 > 환경 변수 > Path에 추가
+C:\your\path\platform-tools
+```
+
+**방법 2: Chocolatey 사용 (권장)**
+```bash
+choco install adb
+```
+
+### 📌 2) 스마트폰 USB 디버깅 활성화
+
+1. **개발자 옵션 활성화**
+   - 설정 > 휴대전화 정보 > 빌드 번호를 7번 연속 탭
+
+2. **USB 디버깅 켜기**
+   - 설정 > 개발자 옵션 > USB 디버깅 활성화
+
+3. **USB 연결 및 인증**
+   - USB로 PC와 연결
+   - 스마트폰 화면에 나타나는 "USB 디버깅 허용" 팝업 승인
+
+4. **연결 확인**
+```bash
+adb devices
+# 기기 목록에 스마트폰이 표시되어야 합니다
+# 예: List of devices attached
+#     ABC123XYZ    device
+```
+
+### 📌 3) APK 설치
+
+```bash
+# APK 파일이 현재 경로에 있을 경우
+adb install app-release.apk
+
+# APK가 다른 경로에 있을 경우
+adb install "C:/your/path/app-release.apk"
+
+# 기존 앱을 덮어쓰기로 설치 (업데이트)
+adb install -r app-release.apk
+```
+
+### 📌 4) 문제 해결
+
+**기기가 인식되지 않을 때:**
+```bash
+# ADB 서버 재시작
+adb kill-server
+adb start-server
+adb devices
+```
+
+**설치 실패 시:**
+```bash
+# 기존 앱 제거 후 재설치
+adb uninstall com.emergency.guide.projects
+adb install app-release.apk
+```
+
+**여러 기기가 연결되어 있을 때:**
+```bash
+# 특정 기기에 설치
+adb -s [DEVICE_ID] install app-release.apk
+```
+
+---
+
 ## 🔄 버전
 
 **v1.0.0** (2025-11-26) - Android 전용 초기 릴리즈
