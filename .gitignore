@@ -163,7 +163,6 @@ yarn-error.log*
 # ============================================
 # Assets
 # ============================================
-assets/audio/*.mp4
 .flutter-plugins-dependencies*
 pubspec.lock
 
