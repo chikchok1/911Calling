@@ -3,6 +3,7 @@ import '../tabs/emergency_tab.dart';
 import '../tabs/guide_tab.dart';
 import '../tabs/ai_analysis_tab.dart';
 import '../tabs/aed_locator_tab.dart';
+import 'profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const GuideTab(),
     const AIAnalysisTab(),
     const AEDLocatorTab(),
+    const ProfileScreen(),
   ];
 
   @override
@@ -53,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.location_on),
               label: 'AED',
             ),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: '내 정보'),
           ],
         ),
       ),
