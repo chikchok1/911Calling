@@ -38,6 +38,7 @@ dependencies:
 
   url_launcher: ^6.3.0
   firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
   cloud_firestore: ^6.1.0
   google_maps_flutter: ^2.5.0
   flutter_naver_map: ^1.4.1+1

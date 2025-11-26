@@ -2,9 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
+import 'screens/auth/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,7 +58,26 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      home: const HomeScreen(),
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          // 로딩 중
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          // 로그인 상태 확인
+          if (snapshot.hasData && snapshot.data != null) {
+            print('✅ 로그인된 사용자: ${snapshot.data!.uid}');
+            return const HomeScreen();
+          } else {
+            print('⚠️ 로그인되지 않은 상태');
+            return const LoginScreen();
+          }
+        },
+      ),
     );
   }
 }
